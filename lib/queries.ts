@@ -539,45 +539,24 @@ async function pickRandomOffset(count: number) {
 }
 
 async function getStatsGlobales() {
-  const [{ count: totalPartidos }, { count: totalJugadores }, { count: golesCordoba }] = await Promise.all([
-    supabase
-      .from('partidos')
-      .select('*', { count: 'exact', head: true })
-      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`),
-    supabase.from('v_jugador_partidos').select('*', { count: 'exact', head: true }),
-    supabase.from('goles').select('*', { count: 'exact', head: true }).eq('equipo_beneficiario_id', CORDOBA_ID),
-  ]);
-
-  // Paginado sin JOIN (los JOINs sobre ~2976 filas paginadas pueden provocar timeout,
-  // como pasó antes con efemérides/rivales). Traemos solo edicion_id y resolvemos
-  // temporada_id aparte con una consulta pequeña.
-  const edicionIds: number[] = [];
-  const PAGE = 1000;
-  let desde = 0;
-  while (true) {
-    const { data: pagina, error } = await supabase
-      .from('partidos')
-      .select('id, edicion_id')
-      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
-      .order('id', { ascending: true })
-      .range(desde, desde + PAGE - 1);
-    if (error || !pagina || pagina.length === 0) break;
-    edicionIds.push(...pagina.map((p: any) => p.edicion_id).filter((x: any) => x != null));
-    if (pagina.length < PAGE) break;
-    desde += PAGE;
-  }
-  const edicionIdsUnicos = Array.from(new Set(edicionIds));
-  const { data: edicionesData } = await supabase
-    .from('ediciones_competicion')
-    .select('id, temporada_id')
-    .in('id', edicionIdsUnicos);
-  const temporadasUnicas = new Set((edicionesData ?? []).map((e: any) => e.temporada_id).filter(Boolean));
+  const [{ count: totalPartidos }, { count: totalJugadores }, { count: golesCordoba }, { data: totalTemporadas }] =
+    await Promise.all([
+      supabase
+        .from('partidos')
+        .select('*', { count: 'exact', head: true })
+        .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`),
+      supabase.from('v_jugador_partidos').select('*', { count: 'exact', head: true }),
+      supabase.from('goles').select('*', { count: 'exact', head: true }).eq('equipo_beneficiario_id', CORDOBA_ID),
+      // Antes se paginaba sobre ~2976 partidos para contar temporadas distintas en JS;
+      // ahora una función en Postgres lo calcula en un único viaje.
+      supabase.rpc('fn_total_temporadas_cordoba'),
+    ]);
 
   return {
     partidos: totalPartidos ?? 0,
     jugadores: totalJugadores ?? 0,
     goles: golesCordoba ?? 0,
-    temporadas: temporadasUnicas.size,
+    temporadas: (totalTemporadas as unknown as number) ?? 0,
   };
 }
 
@@ -658,25 +637,11 @@ async function getEfemeridesHoy() {
     return `${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}` === mmdd;
   };
 
-  // 1) Todos los partidos del Córdoba jugados en este día del calendario (cualquier año),
-  //    sin JOINs en la parte paginada para evitar el timeout que ya tuvimos antes.
-  const filas: any[] = [];
-  const PAGE = 1000;
-  let desde = 0;
-  while (true) {
-    const { data: pagina, error } = await supabase
-      .from('partidos')
-      .select('id, fecha, slug, goles_local, goles_visitante, equipo_local_id, equipo_visitante_id, edicion_id')
-      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
-      .not('goles_local', 'is', null)
-      .order('id', { ascending: true })
-      .range(desde, desde + PAGE - 1);
-    if (error || !pagina || pagina.length === 0) break;
-    filas.push(...pagina);
-    if (pagina.length < PAGE) break;
-    desde += PAGE;
-  }
-  const coincidencias = filas.filter((p: any) => esHoy(p.fecha));
+  // 1) Todos los partidos del Córdoba jugados en este día del calendario (cualquier año).
+  //    Antes se paginaba sobre toda la tabla (varias llamadas de red); ahora una función
+  //    en Postgres hace el filtro y devuelve solo las coincidencias en un único viaje.
+  const { data: coincidenciasData } = await supabase.rpc('fn_partidos_cordoba_en_fecha', { p_mmdd: mmdd });
+  const coincidencias = coincidenciasData ?? [];
   coincidencias.sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   // Mapa fecha -> partido: cualquier hito (debut, gol, etc.) de este día del calendario
   // cayó necesariamente en uno de estos partidos, así que evitamos volver a consultarlo.
@@ -687,12 +652,32 @@ async function getEfemeridesHoy() {
 
   // 2) Debuts y últimos partidos de hoy, con un mínimo de partidos jugados en la carrera.
   const UMBRAL_PARTIDOS = 20;
-  const [{ data: debutsData }, { data: ultimosData }] = await Promise.all([
+  const hitosGol = Array.from({ length: 20 }, (_, i) => (i + 1) * 10); // 10, 20, 30... 200
+  const hitosPartidosEntrenador = [50, 100, 150, 200, 250, 300];
+
+  // Todas estas consultas son independientes entre sí, así que van en un único Promise.all
+  // en vez de en varios "await" seguidos (menos viajes de red = menos latencia acumulada).
+  const [
+    { data: debutsData },
+    { data: ultimosData },
+    { data: primerGolData },
+    { data: hitoGolData },
+    { data: debutEntData },
+    { data: hitoEntData },
+  ] = await Promise.all([
     supabase.from('v_jugador_debut').select('persona_id, fecha_debut'),
     supabase.from('v_jugador_ultimo').select('persona_id, fecha_ultimo'),
+    supabase.from('v_gol_numero').select('persona_id, numero, fecha').eq('numero', 1),
+    supabase.from('v_gol_numero').select('persona_id, numero, fecha').in('numero', hitosGol),
+    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').eq('numero', 1),
+    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').in('numero', hitosPartidosEntrenador),
   ]);
   const debutsHoy = (debutsData ?? []).filter((d: any) => esHoy(d.fecha_debut));
   const ultimosHoy = (ultimosData ?? []).filter((d: any) => esHoy(d.fecha_ultimo));
+  const primerGolHoy = (primerGolData ?? []).filter((g: any) => esHoy(g.fecha));
+  const hitoGolHoy = (hitoGolData ?? []).filter((g: any) => esHoy(g.fecha));
+  const debutEntHoy = (debutEntData ?? []).filter((e: any) => esHoy(e.fecha));
+  const hitoEntHoy = (hitoEntData ?? []).filter((e: any) => esHoy(e.fecha));
 
   const idsUmbral = Array.from(new Set([...debutsHoy, ...ultimosHoy].map((d: any) => d.persona_id)));
   const { data: partidosCountData } =
@@ -703,24 +688,6 @@ async function getEfemeridesHoy() {
 
   const debuts = debutsHoy.filter((d: any) => (partidosPorPersona.get(d.persona_id) ?? 0) >= UMBRAL_PARTIDOS);
   const ultimos = ultimosHoy.filter((d: any) => (partidosPorPersona.get(d.persona_id) ?? 0) >= UMBRAL_PARTIDOS);
-
-  // 3) Primer gol y goles de hito (cada 50) marcados hoy.
-  const hitosGol = Array.from({ length: 20 }, (_, i) => (i + 1) * 10); // 10, 20, 30... 200
-  const hitosPartidosEntrenador = [50, 100, 150, 200, 250, 300];
-  const [{ data: primerGolData }, { data: hitoGolData }] = await Promise.all([
-    supabase.from('v_gol_numero').select('persona_id, numero, fecha').eq('numero', 1),
-    supabase.from('v_gol_numero').select('persona_id, numero, fecha').in('numero', hitosGol),
-  ]);
-  const primerGolHoy = (primerGolData ?? []).filter((g: any) => esHoy(g.fecha));
-  const hitoGolHoy = (hitoGolData ?? []).filter((g: any) => esHoy(g.fecha));
-
-  // 4) Debut y partidos de hito (cada 50) de entrenadores.
-  const [{ data: debutEntData }, { data: hitoEntData }] = await Promise.all([
-    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').eq('numero', 1),
-    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').in('numero', hitosPartidosEntrenador),
-  ]);
-  const debutEntHoy = (debutEntData ?? []).filter((e: any) => esHoy(e.fecha));
-  const hitoEntHoy = (hitoEntData ?? []).filter((e: any) => esHoy(e.fecha));
 
   // Resolvemos nombres de persona para todos los implicados en un único viaje.
   const idsPersonas = Array.from(
@@ -897,46 +864,14 @@ async function getTemporadaDestacadaHome() {
 }
 
 async function getRivalesTopHome(limite = 5) {
-  const filas: any[] = [];
-  const PAGE = 1000;
-  let desde = 0;
-  while (true) {
-    const { data: pagina, error } = await supabase
-      .from('partidos')
-      .select('id, goles_local, goles_visitante, equipo_local_id, equipo_visitante_id')
-      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
-      .order('id', { ascending: true })
-      .range(desde, desde + PAGE - 1);
-    if (error || !pagina || pagina.length === 0) break;
-    filas.push(...pagina);
-    if (pagina.length < PAGE) break;
-    desde += PAGE;
-  }
-  const partidos = filas;
-
-  type Fila = { id: number; pj: number; v: number; e: number; d: number };
-  const porRival = new Map<number, Fila>();
-
-  for (const p of partidos ?? []) {
-    const cordobaEsLocal = p.equipo_local_id === CORDOBA_ID;
-    const rivalId = cordobaEsLocal ? p.equipo_visitante_id : p.equipo_local_id;
-    if (!rivalId || rivalId === CORDOBA_ID) continue;
-    const golesCordoba = cordobaEsLocal ? p.goles_local : p.goles_visitante;
-    const golesRival = cordobaEsLocal ? p.goles_visitante : p.goles_local;
-
-    const actual = porRival.get(rivalId) ?? { id: rivalId, pj: 0, v: 0, e: 0, d: 0 };
-    actual.pj += 1;
-    if (golesCordoba != null && golesRival != null) {
-      if (golesCordoba > golesRival) actual.v += 1;
-      else if (golesCordoba === golesRival) actual.e += 1;
-      else actual.d += 1;
-    }
-    porRival.set(rivalId, actual);
-  }
-
-  const topRivales = Array.from(porRival.values())
-    .sort((a, b) => b.pj - a.pj)
-    .slice(0, limite);
+  // v_rivales_resumen ya viene agregado desde Postgres (antes se paginaba
+  // sobre los ~2976 partidos y se sumaba en JS en cada carga de la home).
+  const { data: resumen } = await supabase
+    .from('v_rivales_resumen')
+    .select('rival_id, pj, v, e, d')
+    .order('pj', { ascending: false })
+    .limit(limite);
+  const topRivales = (resumen ?? []).map((r: any) => ({ id: r.rival_id, pj: r.pj, v: r.v, e: r.e, d: r.d }));
 
   if (topRivales.length === 0) return [];
 
