@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { getRecordsData } from '@/lib/queries';
 import Link from 'next/link';
+import RachaCard from '@/app/components/RachaCard';
 
 function ResultadoPartido({ p }: { p: any }) {
   return (
@@ -75,22 +76,30 @@ export default async function RecordsPage() {
           A diferencia de las rachas por entrenador, estas son independientes de quién estuviera en el banquillo.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { titulo: 'Mejor racha de victorias', r: rachas.mejorRachaVictorias, color: 'text-green-600' },
-            { titulo: 'Peor racha de derrotas', r: rachas.peorRachaDerrotas, color: 'text-red-600' },
-            { titulo: 'Mejor racha sin perder', r: rachas.mejorRachaInvicto, color: 'text-blanquiverde-verde' },
-            { titulo: 'Peor racha sin ganar', r: rachas.peorRachaSinGanar, color: 'text-gray-500' },
-          ].map(({ titulo, r, color }) => (
-            <div key={titulo} className="border rounded-lg text-center py-4 px-2">
-              <div className="text-xs uppercase tracking-wide text-gray-500">{titulo}</div>
-              <div className={`text-3xl font-bold font-serif mt-1 ${color}`}>{r.longitud}</div>
-              {r.partidos.length > 0 && (
-                <div className="text-xs text-gray-400 mt-1">
-                  {fechaCorta(r.partidos[0].fecha)} — {fechaCorta(r.partidos[r.partidos.length - 1].fecha)}
-                </div>
-              )}
-            </div>
-          ))}
+          <RachaCard
+            titulo="Mejor racha de victorias"
+            longitud={rachas.mejorRachaVictorias.longitud}
+            partidos={rachas.mejorRachaVictorias.partidos}
+            colorResultado="green"
+          />
+          <RachaCard
+            titulo="Peor racha de derrotas"
+            longitud={rachas.peorRachaDerrotas.longitud}
+            partidos={rachas.peorRachaDerrotas.partidos}
+            colorResultado="red"
+          />
+          <RachaCard
+            titulo="Mejor racha sin perder"
+            longitud={rachas.mejorRachaInvicto.longitud}
+            partidos={rachas.mejorRachaInvicto.partidos}
+            colorResultado="blue"
+          />
+          <RachaCard
+            titulo="Peor racha sin ganar"
+            longitud={rachas.peorRachaSinGanar.longitud}
+            partidos={rachas.peorRachaSinGanar.partidos}
+            colorResultado="gray"
+          />
         </div>
       </section>
 
@@ -155,7 +164,9 @@ export default async function RecordsPage() {
                   <Link href={`/jugadores/${j.slug}`} className="flex-1 hover:underline">
                     {j.nombre_mostrado}
                   </Link>
-                  <span className="text-gray-500 text-xs">{j.edadAnios} años</span>
+                  <span className="text-gray-500 text-xs">
+                    {j.edadAnios} años, {j.edadDiasResto} días
+                  </span>
                 </li>
               ))}
             </ol>
@@ -169,7 +180,9 @@ export default async function RecordsPage() {
                   <Link href={`/jugadores/${j.slug}`} className="flex-1 hover:underline">
                     {j.nombre_mostrado}
                   </Link>
-                  <span className="text-gray-500 text-xs">{j.edadAnios} años</span>
+                  <span className="text-gray-500 text-xs">
+                    {j.edadAnios} años, {j.edadDiasResto} días
+                  </span>
                 </li>
               ))}
             </ol>

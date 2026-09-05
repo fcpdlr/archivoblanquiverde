@@ -3,7 +3,7 @@ import { getEntrenadorBySlug } from '@/lib/queries';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import PartidosDirigidosList from './PartidosDirigidosList';
-import RachaCard from './RachaCard';
+import RachaCard from '@/app/components/RachaCard';
 
 function nombreCompleto(persona: any) {
   const partes = [persona.nombre, persona.apellido1, persona.apellido2].filter(Boolean);
