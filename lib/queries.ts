@@ -875,7 +875,7 @@ export async function getListadoRivales() {
 }
 
 export async function getHomeData() {
-  const [stats, ultimoPartido, efemerides, jugadorDestacado, recordHistorico, temporadaDestacada, rivalesTop, aleatorios, cobertura] =
+  const [stats, ultimoPartido, efemerides, jugadorDestacado, recordHistorico, temporadaDestacada, rivalesTop, aleatorios, cobertura, cumpleanosHoy] =
     await Promise.all([
       getStatsGlobales(),
       getUltimoPartidoHome(),
@@ -886,6 +886,7 @@ export async function getHomeData() {
       getRivalesTopHome(5),
       getAleatoriosHome(),
       getCoberturaHome(),
+      getCumpleanosHoy(),
     ]);
 
   return {
@@ -898,6 +899,7 @@ export async function getHomeData() {
     rivalesTop,
     aleatorios,
     cobertura,
+    cumpleanosHoy,
   };
 }
 
@@ -978,7 +980,7 @@ export async function getEntrenadoresListado() {
     .sort((a: any, b: any) => b.partidos - a.partidos);
 }
 
-type PartidoResumen = {
+export type PartidoResumen = {
   fecha: string;
   slug: string;
   rival: string;
@@ -1015,7 +1017,7 @@ function encontrarMejorRacha(partidos: PartidoResumen[], cumple: (r: PartidoResu
   return { longitud: mejorLongitud, partidos: partidos.slice(mejorInicio, mejorInicio + mejorLongitud) };
 }
 
-function calcularRachas(partidos: PartidoResumen[]) {
+export function calcularRachas(partidos: PartidoResumen[]) {
   return {
     mejorRachaVictorias: encontrarMejorRacha(partidos, (r) => r === 'V'),
     peorRachaDerrotas: encontrarMejorRacha(partidos, (r) => r === 'D'),
@@ -1129,5 +1131,173 @@ export async function getEntrenadorBySlug(slug: string) {
     jugadoresMasUtilizados,
     esTambienJugador,
     rachas,
+  };
+}
+// ---------------------------------------------------------------------------
+// RÉCORDS Y CURIOSIDADES DEL CLUB
+// ---------------------------------------------------------------------------
+
+async function getPartidosCordobaTodos(): Promise<PartidoResumen[]> {
+  const filas: any[] = [];
+  const PAGE = 1000;
+  let desde = 0;
+  while (true) {
+    const { data: pagina } = await supabase
+      .from('partidos')
+      .select(
+        `fecha, slug, goles_local, goles_visitante,
+         equipo_local:equipos!partidos_equipo_local_id_fkey(id, nombre_corto),
+         equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(id, nombre_corto),
+         edicion:ediciones_competicion(temporada:temporadas(etiqueta), competicion:competiciones(nombre_actual))`
+      )
+      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
+      .order('fecha', { ascending: true })
+      .range(desde, desde + PAGE - 1);
+    if (!pagina || pagina.length === 0) break;
+    filas.push(...pagina);
+    if (pagina.length < PAGE) break;
+    desde += PAGE;
+  }
+
+  return filas.map((p: any) => {
+    const cordobaEsLocal = p.equipo_local.id === CORDOBA_ID;
+    const rival = cordobaEsLocal ? p.equipo_visitante : p.equipo_local;
+    const golesCordoba = cordobaEsLocal ? p.goles_local : p.goles_visitante;
+    const golesRival = cordobaEsLocal ? p.goles_visitante : p.goles_local;
+    let resultado: 'V' | 'E' | 'D' | null = null;
+    if (golesCordoba != null && golesRival != null) {
+      resultado = golesCordoba > golesRival ? 'V' : golesCordoba === golesRival ? 'E' : 'D';
+    }
+    return {
+      fecha: p.fecha,
+      slug: p.slug,
+      rival: rival?.nombre_corto ?? '?',
+      local: cordobaEsLocal,
+      golesCordoba,
+      golesRival,
+      resultado,
+      competicion: p.edicion?.competicion?.nombre_actual ?? null,
+      temporada: p.edicion?.temporada?.etiqueta ?? null,
+    };
+  });
+}
+
+async function getDebutsEdades() {
+  const { data } = await supabase
+    .from('v_jugador_debut')
+    .select('fecha_debut, persona:personas(nombre_mostrado, slug, fecha_nacimiento)');
+
+  return (data ?? [])
+    .filter((row: any) => row.persona?.fecha_nacimiento)
+    .map((row: any) => {
+      const edadDias = Math.floor(
+        (new Date(row.fecha_debut).getTime() - new Date(row.persona.fecha_nacimiento).getTime()) / 86400000
+      );
+      return {
+        nombre_mostrado: row.persona.nombre_mostrado,
+        slug: row.persona.slug,
+        fechaDebut: row.fecha_debut,
+        edadAnios: Math.floor(edadDias / 365.25),
+        edadDiasResto: Math.floor(edadDias % 365.25),
+      };
+    })
+    .filter((d: any) => d.edadAnios >= 14 && d.edadAnios <= 45); // descarta fechas de nacimiento con errores evidentes
+}
+
+export async function getCumpleanosHoy() {
+  const hoy = new Date();
+  const mmdd = `${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+  const idsJugadores = new Set<number>();
+  {
+    const PAGE = 1000;
+    let desde = 0;
+    while (true) {
+      const { data: pagina } = await supabase.from('v_jugador_partidos').select('persona_id').range(desde, desde + PAGE - 1);
+      if (!pagina || pagina.length === 0) break;
+      pagina.forEach((r: any) => idsJugadores.add(r.persona_id));
+      if (pagina.length < PAGE) break;
+      desde += PAGE;
+    }
+  }
+  const idsEntrenadores = new Set<number>(
+    (await getEntrenadoresListado()).map((e: any) => e.id)
+  );
+  const todosIds = Array.from(new Set([...idsJugadores, ...idsEntrenadores]));
+  if (todosIds.length === 0) return [];
+
+  const { data: personasData } = await supabase
+    .from('personas')
+    .select('id, nombre_mostrado, slug, fecha_nacimiento')
+    .in('id', todosIds)
+    .not('fecha_nacimiento', 'is', null);
+
+  return (personasData ?? [])
+    .filter((p: any) => {
+      const f = new Date(p.fecha_nacimiento + 'T00:00:00');
+      const pmmdd = `${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+      return pmmdd === mmdd;
+    })
+    .map((p: any) => ({
+      nombre_mostrado: p.nombre_mostrado,
+      slug: p.slug,
+      esJugador: idsJugadores.has(p.id),
+      fecha_nacimiento: p.fecha_nacimiento,
+    }));
+}
+
+export async function getRecordsData() {
+  const partidos = await getPartidosCordobaTodos();
+  const decididos = partidos.filter((p) => p.golesCordoba != null && p.golesRival != null);
+
+  const mayoresVictorias = [...decididos]
+    .filter((p) => p.resultado === 'V')
+    .sort((a, b) => b.golesCordoba! - b.golesRival! - (a.golesCordoba! - a.golesRival!))
+    .slice(0, 5);
+
+  const mayoresDerrotas = [...decididos]
+    .filter((p) => p.resultado === 'D')
+    .sort((a, b) => a.golesCordoba! - a.golesRival! - (b.golesCordoba! - b.golesRival!))
+    .slice(0, 5);
+
+  const rachas = calcularRachas(partidos);
+
+  const frecuencia = new Map<string, { cuenta: number; ejemplo: PartidoResumen }>();
+  for (const p of decididos) {
+    const key = `${p.golesCordoba}-${p.golesRival}`;
+    const actual = frecuencia.get(key) ?? { cuenta: 0, ejemplo: p };
+    actual.cuenta += 1;
+    frecuencia.set(key, actual);
+  }
+  const resultadosOrdenados = Array.from(frecuencia.entries())
+    .map(([resultado, v]) => ({ resultado, ...v }))
+    .sort((a, b) => b.cuenta - a.cuenta);
+
+  const NOMBRES_MES = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ];
+  const meses = NOMBRES_MES.map((nombre, i) => ({ mes: i + 1, nombre, pj: 0, v: 0, e: 0, d: 0 }));
+  for (const p of decididos) {
+    const m = new Date(p.fecha + 'T00:00:00').getMonth();
+    meses[m].pj += 1;
+    if (p.resultado === 'V') meses[m].v += 1;
+    else if (p.resultado === 'E') meses[m].e += 1;
+    else meses[m].d += 1;
+  }
+
+  const debuts = await getDebutsEdades();
+  const masJovenes = [...debuts].sort((a, b) => a.edadAnios - b.edadAnios || a.edadDiasResto - b.edadDiasResto).slice(0, 5);
+  const masVeteranos = [...debuts].sort((a, b) => b.edadAnios - a.edadAnios || b.edadDiasResto - a.edadDiasResto).slice(0, 5);
+
+  return {
+    mayoresVictorias,
+    mayoresDerrotas,
+    rachas,
+    resultadosOrdenados,
+    totalResultadosDistintos: resultadosOrdenados.length,
+    meses,
+    masJovenes,
+    masVeteranos,
   };
 }

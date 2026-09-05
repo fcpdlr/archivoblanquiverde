@@ -26,7 +26,7 @@ function EquipoMini({ equipo }: { equipo: any }) {
 
 export default async function HomePage() {
   const data = await getHomeData();
-  const { stats, ultimoPartido, efemerides, jugadorDestacado, recordHistorico, temporadaDestacada, rivalesTop, aleatorios, cobertura } =
+  const { stats, ultimoPartido, efemerides, jugadorDestacado, recordHistorico, temporadaDestacada, rivalesTop, aleatorios, cobertura, cumpleanosHoy } =
     data;
 
   const sugerencias: { label: string; href: string }[] = [];
@@ -125,26 +125,41 @@ export default async function HomePage() {
       )}
 
       {/* 5. Tal día como hoy */}
-      {efemerides.length > 0 && (
+      {(efemerides.length > 0 || cumpleanosHoy.length > 0) && (
         <section className="max-w-2xl mx-auto">
           <h2 className="font-serif text-xl font-bold text-blanquiverde-verde mb-4">Tal día como hoy</h2>
-          <ul className="border rounded-lg divide-y">
-            {efemerides.map((e: any) => {
-              const resultado = e.golesCordoba > e.golesRival ? 'V' : e.golesCordoba === e.golesRival ? 'E' : 'D';
-              const color = resultado === 'V' ? 'text-green-600' : resultado === 'D' ? 'text-red-600' : 'text-gray-500';
-              return (
-                <li key={e.slug}>
-                  <Link href={`/partidos/${e.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-sm">
-                    <span>
-                      Córdoba {e.golesCordoba}-{e.golesRival} {e.rival}
-                      {e.temporada && <span className="text-gray-400"> ({e.temporada})</span>}
-                    </span>
-                    <span className={`font-semibold ${color}`}>{resultado}</span>
+          {efemerides.length > 0 && (
+            <ul className="border rounded-lg divide-y mb-3">
+              {efemerides.map((e: any) => {
+                const resultado = e.golesCordoba > e.golesRival ? 'V' : e.golesCordoba === e.golesRival ? 'E' : 'D';
+                const color = resultado === 'V' ? 'text-green-600' : resultado === 'D' ? 'text-red-600' : 'text-gray-500';
+                return (
+                  <li key={e.slug}>
+                    <Link href={`/partidos/${e.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-sm">
+                      <span>
+                        Córdoba {e.golesCordoba}-{e.golesRival} {e.rival}
+                        {e.temporada && <span className="text-gray-400"> ({e.temporada})</span>}
+                      </span>
+                      <span className={`font-semibold ${color}`}>{resultado}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {cumpleanosHoy.length > 0 && (
+            <div className="border rounded-lg px-4 py-3 text-sm">
+              <span className="text-gray-400">🎂 Cumpleaños: </span>
+              {cumpleanosHoy.map((c: any, i: number) => (
+                <span key={c.slug}>
+                  <Link href={`/${c.esJugador ? 'jugadores' : 'entrenadores'}/${c.slug}`} className="hover:underline">
+                    {c.nombre_mostrado}
                   </Link>
-                </li>
-              );
-            })}
-          </ul>
+                  {i < cumpleanosHoy.length - 1 && ', '}
+                </span>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
