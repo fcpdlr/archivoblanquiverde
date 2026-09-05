@@ -125,16 +125,12 @@ export default async function HomePage() {
       )}
 
       {/* 5. Tal día como hoy */}
-      <section className="max-w-2xl mx-auto text-xs text-red-500 border border-red-300 rounded p-2 mb-4">
-        DEBUG: hoy={efemerides.debugHoy} · filas totales={efemerides.debugTotal} · coincidencias={efemerides.debugCoincidencias} · error=
-        {efemerides.debugError ?? 'ninguno'}
-      </section>
-      {(efemerides.coincidencias.length > 0 || cumpleanosHoy.length > 0) && (
+      {(efemerides.length > 0 || cumpleanosHoy.length > 0) && (
         <section className="max-w-2xl mx-auto">
           <h2 className="font-serif text-xl font-bold text-blanquiverde-verde mb-4">Tal día como hoy</h2>
-          {efemerides.coincidencias.length > 0 && (
+          {efemerides.length > 0 && (
             <ul className="border rounded-lg divide-y mb-3">
-              {efemerides.coincidencias.map((e: any) => {
+              {efemerides.map((e: any) => {
                 const resultado = e.golesCordoba > e.golesRival ? 'V' : e.golesCordoba === e.golesRival ? 'E' : 'D';
                 const color = resultado === 'V' ? 'text-green-600' : resultado === 'D' ? 'text-red-600' : 'text-gray-500';
                 return (
