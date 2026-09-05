@@ -1268,6 +1268,13 @@ export async function getCumpleanosHoy() {
     }));
 }
 
+export async function getPartidosPorResultado(golesCordoba: number, golesRival: number) {
+  const partidos = await getPartidosCordobaTodos();
+  return partidos
+    .filter((p) => p.golesCordoba === golesCordoba && p.golesRival === golesRival)
+    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+}
+
 export async function getRecordsData() {
   const partidos = await getPartidosCordobaTodos();
   const decididos = partidos.filter((p) => p.golesCordoba != null && p.golesRival != null);

@@ -118,8 +118,8 @@ export default async function RecordsPage() {
               <span className="text-gray-500">
                 {r.cuenta} {r.cuenta === 1 ? 'vez' : 'veces'}
               </span>
-              <Link href={`/partidos/${r.ejemplo.slug}`} className="text-xs text-blanquiverde-verde hover:underline ml-4">
-                ejemplo →
+              <Link href={`/records/resultado/${r.resultado}`} className="text-xs text-blanquiverde-verde hover:underline ml-4">
+                ver todos →
               </Link>
             </div>
           ))}
@@ -174,7 +174,11 @@ export default async function RecordsPage() {
                     );
                     return (
                       <td key={celda.golesRival} className="p-0.5">
-                        {ocurrido && celda.slug ? <Link href={`/partidos/${celda.slug}`}>{cell}</Link> : cell}
+                        {ocurrido ? (
+                          <Link href={`/records/resultado/${celda.golesCordoba}-${celda.golesRival}`}>{cell}</Link>
+                        ) : (
+                          cell
+                        )}
                       </td>
                     );
                   })}
