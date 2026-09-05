@@ -8,9 +8,14 @@ const SUPABASE_ANON_KEY =
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   global: {
-    // Next.js intercepta fetch() y lo cachea por defecto, incluso en rutas
-    // force-dynamic. Desactivamos esa caché para que las consultas a Supabase
-    // sean siempre en vivo (evita datos desactualizados como el escudo del Córdoba).
-    fetch: (url: RequestInfo | URL, options: RequestInit = {}) => fetch(url, { ...options, cache: 'no-store' }),
+    // Next.js intercepta fetch() y lo cachea por defecto. Antes usábamos
+    // cache: 'no-store' para evitar datos desactualizados (p.ej. el escudo del
+    // Córdoba), pero eso hacía que CADA visita, de cualquier usuario, volviera
+    // a ejecutar todas las consultas contra Supabase — la web entera se sentía
+    // lenta. En su lugar, cacheamos 60 segundos: rápido para casi todas las
+    // visitas, y cualquier cambio nuestro en la base de datos tarda como mucho
+    // un minuto en reflejarse, en vez de estar siempre desactivada.
+    fetch: (url: RequestInfo | URL, options: RequestInit = {}) =>
+      fetch(url, { ...options, next: { revalidate: 60 } } as RequestInit),
   },
 });
