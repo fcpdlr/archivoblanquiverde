@@ -548,24 +548,30 @@ async function getStatsGlobales() {
     supabase.from('goles').select('*', { count: 'exact', head: true }).eq('equipo_beneficiario_id', CORDOBA_ID),
   ]);
 
-  // Paginado: con ~2976 partidos, una sola consulta sin range() se queda en el
-  // límite por defecto de Supabase (1000 filas) y da un recuento de temporadas erróneo.
-  const temporadasIds: (number | null)[] = [];
+  // Paginado sin JOIN (los JOINs sobre ~2976 filas paginadas pueden provocar timeout,
+  // como pasó antes con efemérides/rivales). Traemos solo edicion_id y resolvemos
+  // temporada_id aparte con una consulta pequeña.
+  const edicionIds: number[] = [];
   const PAGE = 1000;
   let desde = 0;
   while (true) {
     const { data: pagina, error } = await supabase
       .from('partidos')
-      .select('id, edicion:ediciones_competicion(temporada_id)')
+      .select('id, edicion_id')
       .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
       .order('id', { ascending: true })
       .range(desde, desde + PAGE - 1);
     if (error || !pagina || pagina.length === 0) break;
-    temporadasIds.push(...pagina.map((p: any) => p.edicion?.temporada_id ?? null));
+    edicionIds.push(...pagina.map((p: any) => p.edicion_id).filter((x: any) => x != null));
     if (pagina.length < PAGE) break;
     desde += PAGE;
   }
-  const temporadasUnicas = new Set(temporadasIds.filter(Boolean));
+  const edicionIdsUnicos = Array.from(new Set(edicionIds));
+  const { data: edicionesData } = await supabase
+    .from('ediciones_competicion')
+    .select('id, temporada_id')
+    .in('id', edicionIdsUnicos);
+  const temporadasUnicas = new Set((edicionesData ?? []).map((e: any) => e.temporada_id).filter(Boolean));
 
   return {
     partidos: totalPartidos ?? 0,
