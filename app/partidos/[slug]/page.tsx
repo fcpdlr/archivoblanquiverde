@@ -165,8 +165,25 @@ export default async function PartidoPage({ params }: { params: { slug: string }
 
   eventos.sort((a, b) => a.minuto - b.minuto || (a.minutoExtra ?? 0) - (b.minutoExtra ?? 0));
 
+  // Orden táctico: portero, lateral derecho, centrales, lateral izquierdo, centrocampistas, delanteros.
+  function ordenTactico(persona: any): number {
+    const g = persona?.posicion_general;
+    const e = persona?.posicion_especifica ?? '';
+    if (g === 'Portero') return 1;
+    if (g === 'Defensa') {
+      if (e === 'Lateral derecho') return 2;
+      if (e === 'Lateral izquierdo') return 4;
+      return 3; // Central, o Defensa sin especificar
+    }
+    if (g === 'Centrocampista') return 5;
+    if (g === 'Delantero') return 6;
+    return 7; // Sin posición registrada, al final
+  }
+
   function AlineacionEquipo({ lista, equipo, entrenador }: { lista: any[]; equipo: any; entrenador: any }) {
-    const titulares = lista.filter((c) => c.participacion?.titular);
+    const titulares = lista
+      .filter((c) => c.participacion?.titular)
+      .sort((a, b) => ordenTactico(a.persona) - ordenTactico(b.persona));
     const suplentes = lista.filter((c) => c.participacion && !c.participacion.titular);
     return (
       <div>

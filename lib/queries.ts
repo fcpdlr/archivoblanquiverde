@@ -35,7 +35,7 @@ export async function getPartidoBySlug(slug: string) {
       supabase
         .from('convocatorias')
         .select(
-          `equipo_id, jugo, dorsal, persona:personas(id, nombre_mostrado, slug),
+          `equipo_id, jugo, dorsal, persona:personas(id, nombre_mostrado, slug, posicion_general, posicion_especifica),
            participacion:participaciones(titular, minuto_entra, minuto_sale)`
         )
         .eq('partido_id', partido.id),
