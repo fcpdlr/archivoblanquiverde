@@ -620,20 +620,25 @@ async function getEfemeridesHoy() {
 
   coincidencias.sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
-  return coincidencias.slice(0, 3).map((p: any) => {
-    const cordobaEsLocal = p.equipo_local.id === CORDOBA_ID;
-    const rival = cordobaEsLocal ? p.equipo_visitante : p.equipo_local;
-    const golesCordoba = cordobaEsLocal ? p.goles_local : p.goles_visitante;
-    const golesRival = cordobaEsLocal ? p.goles_visitante : p.goles_local;
-    return {
-      slug: p.slug,
-      fecha: p.fecha,
-      rival: rival.nombre_corto,
-      golesCordoba,
-      golesRival,
-      temporada: p.edicion?.temporada?.etiqueta ?? null,
-    };
-  });
+  return {
+    debugTotal: filas.length,
+    debugCoincidencias: coincidencias.length,
+    debugHoy: mmdd,
+    coincidencias: coincidencias.slice(0, 3).map((p: any) => {
+      const cordobaEsLocal = p.equipo_local.id === CORDOBA_ID;
+      const rival = cordobaEsLocal ? p.equipo_visitante : p.equipo_local;
+      const golesCordoba = cordobaEsLocal ? p.goles_local : p.goles_visitante;
+      const golesRival = cordobaEsLocal ? p.goles_visitante : p.goles_local;
+      return {
+        slug: p.slug,
+        fecha: p.fecha,
+        rival: rival.nombre_corto,
+        golesCordoba,
+        golesRival,
+        temporada: p.edicion?.temporada?.etiqueta ?? null,
+      };
+    }),
+  };
 }
 
 async function getJugadorDestacadoHome() {
