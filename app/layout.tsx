@@ -2,7 +2,7 @@ import './globals.css';
 import Link from 'next/link';
 
 export const metadata = {
-  metadataBase: new URL('https://archivoblanquiverde-vote-4-goats-projects.vercel.app'), // actualizar cuando se conecte el dominio definitivo
+  metadataBase: new URL('https://archivoblanquiverde.com'),
   title: 'Archivo Blanquiverde',
   description: 'Toda la historia del Córdoba CF, en un solo lugar',
 };
