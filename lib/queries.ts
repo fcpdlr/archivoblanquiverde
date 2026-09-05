@@ -539,21 +539,33 @@ async function pickRandomOffset(count: number) {
 }
 
 async function getStatsGlobales() {
-  const [{ count: totalPartidos }, { count: totalJugadores }, { data: temporadasData }, { count: golesCordoba }] =
-    await Promise.all([
-      supabase
-        .from('partidos')
-        .select('*', { count: 'exact', head: true })
-        .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`),
-      supabase.from('v_jugador_partidos').select('*', { count: 'exact', head: true }),
-      supabase
-        .from('partidos')
-        .select('edicion:ediciones_competicion(temporada_id)')
-        .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`),
-      supabase.from('goles').select('*', { count: 'exact', head: true }).eq('equipo_beneficiario_id', CORDOBA_ID),
-    ]);
+  const [{ count: totalPartidos }, { count: totalJugadores }, { count: golesCordoba }] = await Promise.all([
+    supabase
+      .from('partidos')
+      .select('*', { count: 'exact', head: true })
+      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`),
+    supabase.from('v_jugador_partidos').select('*', { count: 'exact', head: true }),
+    supabase.from('goles').select('*', { count: 'exact', head: true }).eq('equipo_beneficiario_id', CORDOBA_ID),
+  ]);
 
-  const temporadasUnicas = new Set((temporadasData ?? []).map((p: any) => p.edicion?.temporada_id).filter(Boolean));
+  // Paginado: con ~2976 partidos, una sola consulta sin range() se queda en el
+  // límite por defecto de Supabase (1000 filas) y da un recuento de temporadas erróneo.
+  const temporadasIds: (number | null)[] = [];
+  const PAGE = 1000;
+  let desde = 0;
+  while (true) {
+    const { data: pagina, error } = await supabase
+      .from('partidos')
+      .select('id, edicion:ediciones_competicion(temporada_id)')
+      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
+      .order('id', { ascending: true })
+      .range(desde, desde + PAGE - 1);
+    if (error || !pagina || pagina.length === 0) break;
+    temporadasIds.push(...pagina.map((p: any) => p.edicion?.temporada_id ?? null));
+    if (pagina.length < PAGE) break;
+    desde += PAGE;
+  }
+  const temporadasUnicas = new Set(temporadasIds.filter(Boolean));
 
   return {
     partidos: totalPartidos ?? 0,
@@ -744,11 +756,25 @@ async function getTemporadaDestacadaHome() {
   if (!temporadas || temporadas.length === 0) return null;
 
   // Solo elegimos entre temporadas donde el Córdoba realmente jugó.
-  const { data: partidosPorTemporada } = await supabase
-    .from('partidos')
-    .select('edicion:ediciones_competicion(temporada_id)')
-    .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`);
-  const idsConPartidos = new Set((partidosPorTemporada ?? []).map((p: any) => p.edicion?.temporada_id).filter(Boolean));
+  // Paginado: sin range(), la consulta se trunca a las primeras ~1000 de 2976 filas.
+  const idsTemporadaPartidos: (number | null)[] = [];
+  {
+    const PAGE = 1000;
+    let desde = 0;
+    while (true) {
+      const { data: pagina, error } = await supabase
+        .from('partidos')
+        .select('id, edicion:ediciones_competicion(temporada_id)')
+        .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
+        .order('id', { ascending: true })
+        .range(desde, desde + PAGE - 1);
+      if (error || !pagina || pagina.length === 0) break;
+      idsTemporadaPartidos.push(...pagina.map((p: any) => p.edicion?.temporada_id ?? null));
+      if (pagina.length < PAGE) break;
+      desde += PAGE;
+    }
+  }
+  const idsConPartidos = new Set(idsTemporadaPartidos.filter(Boolean));
   const elegibles = temporadas.filter((t: any) => idsConPartidos.has(t.id));
   if (elegibles.length === 0) return null;
 
