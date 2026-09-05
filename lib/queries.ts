@@ -83,7 +83,7 @@ export async function getJugadorBySlug(slug: string) {
   const { data: convocatorias } = await supabase
     .from('convocatorias')
     .select(
-      `jugo,
+      `jugo, dorsal,
        participacion:participaciones(titular, minuto_entra, minuto_sale),
        partido:partidos(id, fecha, slug, goles_local, goles_visitante,
          equipo_local:equipos!partidos_equipo_local_id_fkey(id, nombre_corto),

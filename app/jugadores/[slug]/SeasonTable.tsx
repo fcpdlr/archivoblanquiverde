@@ -13,6 +13,7 @@ type CompeticionFila = {
 
 type TemporadaFila = {
   temporada: string;
+  dorsal: number | null;
   edad: number | null;
   pj: number;
   titular: number;
@@ -37,6 +38,7 @@ export default function SeasonTable({ filas }: { filas: TemporadaFila[] }) {
     <table className="w-full text-sm min-w-[600px]">
       <thead>
         <tr className="text-left text-gray-500 border-b-2 border-gray-800 font-serif">
+          <th className="py-2 pr-4 text-center">#</th>
           <th className="py-2 pr-4">Temporada</th>
           <th className="py-2 pr-4">Edad</th>
           <th className="py-2 pr-4 text-center">Partidos</th>
@@ -57,6 +59,7 @@ export default function SeasonTable({ filas }: { filas: TemporadaFila[] }) {
                 className={`border-b last:border-0 font-serif ${puedeExpandir ? 'cursor-pointer hover:bg-gray-50' : ''}`}
                 onClick={() => puedeExpandir && toggle(f.temporada)}
               >
+                <td className="py-2 pr-4 text-center text-gray-400 font-mono">{f.dorsal ?? ''}</td>
                 <td className="py-2 pr-4">
                   <Link
                     href={`/temporadas/${f.temporada}`}
@@ -76,6 +79,7 @@ export default function SeasonTable({ filas }: { filas: TemporadaFila[] }) {
               {abierta &&
                 f.competiciones.map((c) => (
                   <tr key={f.temporada + c.competicion} className="border-b last:border-0 text-gray-500 bg-gray-50 text-xs">
+                    <td></td>
                     <td className="py-1.5 pr-4 pl-6">{c.competicion}</td>
                     <td className="py-1.5 pr-4"></td>
                     <td className="py-1.5 pr-4 text-center">{c.pj}</td>

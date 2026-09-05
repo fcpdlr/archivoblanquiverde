@@ -35,13 +35,13 @@ export default async function JugadorPage({ params }: { params: { slug: string }
 
   // --- Agrupación temporada -> competición (para la tabla de temporadas) ---
   type Comp = { competicion: string; pj: number; titular: number; goles: number; tarjetas: number };
-  type Temp = { temporada: string; anioInicio: number; comps: Map<string, Comp> };
+  type Temp = { temporada: string; anioInicio: number; comps: Map<string, Comp>; dorsal: number | null; ultimaFechaDorsal: string | null };
   const temporadas = new Map<string, Temp>();
 
   function getTemp(etiqueta: string, anioInicio: number) {
     let t = temporadas.get(etiqueta);
     if (!t) {
-      t = { temporada: etiqueta, anioInicio, comps: new Map() };
+      t = { temporada: etiqueta, anioInicio, comps: new Map(), dorsal: null, ultimaFechaDorsal: null };
       temporadas.set(etiqueta, t);
     }
     return t;
@@ -72,6 +72,10 @@ export default async function JugadorPage({ params }: { params: { slug: string }
     if (c.participacion?.titular) comp.titular += 1;
 
     const p = c.partido;
+    if (c.dorsal != null && p?.fecha && (!t.ultimaFechaDorsal || p.fecha >= t.ultimaFechaDorsal)) {
+      t.dorsal = c.dorsal;
+      t.ultimaFechaDorsal = p.fecha;
+    }
     if (p && p.equipo_local && p.equipo_visitante && p.goles_local != null && p.goles_visitante != null) {
       const cordobaEsLocal = p.equipo_local.id === CORDOBA_ID;
       const golesCordoba = cordobaEsLocal ? p.goles_local : p.goles_visitante;
@@ -114,7 +118,7 @@ export default async function JugadorPage({ params }: { params: { slug: string }
       const golesT = comps.reduce((s, c) => s + c.goles, 0);
       const tarjetasT = comps.reduce((s, c) => s + c.tarjetas, 0);
       const edad = edadEn(persona.fecha_nacimiento, new Date(t.anioInicio, 6, 1));
-      return { temporada: t.temporada, edad, pj, titular, goles: golesT, tarjetas: tarjetasT, competiciones: comps };
+      return { temporada: t.temporada, dorsal: t.dorsal, edad, pj, titular, goles: golesT, tarjetas: tarjetasT, competiciones: comps };
     });
 
   const topRivales = Array.from(rivales.values())
