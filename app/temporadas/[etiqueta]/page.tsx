@@ -144,8 +144,9 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
       {/* Plantilla */}
       <div>
         <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-3">Plantilla</h2>
+        <p className="sm:hidden text-xs text-gray-400 mb-1">Desliza para ver toda la tabla →</p>
         <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
                 <th className="py-2 px-4 text-center">#</th>
@@ -187,8 +188,9 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
           <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-3">
             Copa {competicionesCopa.map((c: any) => `(${c.partidos} partidos, ${c.victorias}V ${c.empates}E ${c.derrotas}D)`).join(', ')}
           </h2>
+          <p className="sm:hidden text-xs text-gray-400 mb-1">Desliza para ver toda la tabla →</p>
           <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm whitespace-nowrap">
               <tbody>
                 {partidos
                   .filter((p: any) => competicionesCopa.some((c: any) => c.edicionId === p.edicion_id))
@@ -204,8 +206,9 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
       {/* Listado completo de partidos */}
       <div>
         <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-3">Todos los partidos</h2>
+        <p className="sm:hidden text-xs text-gray-400 mb-1">Desliza para ver toda la tabla →</p>
         <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
                 <th className="py-2 px-4">Fecha</th>

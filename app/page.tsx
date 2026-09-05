@@ -317,8 +317,9 @@ export default async function HomePage() {
       {rivalesTop.length > 0 && (
         <section className="max-w-2xl mx-auto">
           <h2 className="font-serif text-xl font-bold text-blanquiverde-verde mb-4">Rivales históricos</h2>
+          <p className="sm:hidden text-xs text-gray-400 mb-1">Desliza para ver toda la tabla →</p>
           <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm whitespace-nowrap">
               <thead>
                 <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
                   <th className="py-2 px-4">Rival</th>

@@ -35,7 +35,7 @@ export default function SeasonTable({ filas }: { filas: TemporadaFila[] }) {
   }
 
   return (
-    <table className="w-full text-sm min-w-[600px]">
+    <table className="w-full text-sm whitespace-nowrap min-w-[600px]">
       <thead>
         <tr className="text-left text-gray-500 border-b-2 border-blanquiverde-verde font-serif">
           <th className="py-2 pr-4 text-center">#</th>

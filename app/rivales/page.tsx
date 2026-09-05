@@ -12,8 +12,9 @@ export default async function RivalesIndexPage() {
       <p className="text-gray-500 mb-6">
         Historial completo del Córdoba CF frente a todos sus rivales, ordenado por partidos disputados.
       </p>
+      <p className="sm:hidden text-xs text-gray-400 mb-1">Desliza para ver toda la tabla →</p>
       <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm whitespace-nowrap">
           <thead>
             <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
               <th className="py-2 px-4">Rival</th>

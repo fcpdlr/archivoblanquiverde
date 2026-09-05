@@ -58,8 +58,10 @@ export default function ComparadorEntrenadores({ entrenadores }: { entrenadores:
   }
 
   return (
-    <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
-      <table className="w-full text-sm">
+    <>
+      <p className="sm:hidden text-xs text-gray-400 mb-1">Desliza para ver toda la tabla →</p>
+      <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
+      <table className="w-full text-sm whitespace-nowrap">
         <thead>
           <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
             <th className="py-2 px-4">#</th>
@@ -92,6 +94,7 @@ export default function ComparadorEntrenadores({ entrenadores }: { entrenadores:
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
