@@ -593,8 +593,9 @@ async function getEfemeridesHoy() {
   const filas: any[] = [];
   const PAGE = 1000;
   let desde = 0;
+  let debugError: string | null = null;
   while (true) {
-    const { data: pagina } = await supabase
+    const { data: pagina, error } = await supabase
       .from('partidos')
       .select(
         `id, fecha, slug, goles_local, goles_visitante,
@@ -606,6 +607,10 @@ async function getEfemeridesHoy() {
       .not('goles_local', 'is', null)
       .order('id', { ascending: true })
       .range(desde, desde + PAGE - 1);
+    if (error) {
+      debugError = error.message;
+      break;
+    }
     if (!pagina || pagina.length === 0) break;
     filas.push(...pagina);
     if (pagina.length < PAGE) break;
@@ -624,6 +629,7 @@ async function getEfemeridesHoy() {
     debugTotal: filas.length,
     debugCoincidencias: coincidencias.length,
     debugHoy: mmdd,
+    debugError,
     coincidencias: coincidencias.slice(0, 3).map((p: any) => {
       const cordobaEsLocal = p.equipo_local.id === CORDOBA_ID;
       const rival = cordobaEsLocal ? p.equipo_visitante : p.equipo_local;

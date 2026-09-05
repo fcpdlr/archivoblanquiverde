@@ -126,7 +126,8 @@ export default async function HomePage() {
 
       {/* 5. Tal día como hoy */}
       <section className="max-w-2xl mx-auto text-xs text-red-500 border border-red-300 rounded p-2 mb-4">
-        DEBUG: hoy={efemerides.debugHoy} · filas totales={efemerides.debugTotal} · coincidencias={efemerides.debugCoincidencias}
+        DEBUG: hoy={efemerides.debugHoy} · filas totales={efemerides.debugTotal} · coincidencias={efemerides.debugCoincidencias} · error=
+        {efemerides.debugError ?? 'ninguno'}
       </section>
       {(efemerides.coincidencias.length > 0 || cumpleanosHoy.length > 0) && (
         <section className="max-w-2xl mx-auto">
