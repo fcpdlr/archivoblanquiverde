@@ -3,6 +3,7 @@ import { getEntrenadorBySlug } from '@/lib/queries';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import PartidosDirigidosList from './PartidosDirigidosList';
+import RachaCard from './RachaCard';
 
 function nombreCompleto(persona: any) {
   const partes = [persona.nombre, persona.apellido1, persona.apellido2].filter(Boolean);
@@ -18,7 +19,7 @@ export default async function EntrenadorPage({ params }: { params: { slug: strin
   const data = await getEntrenadorBySlug(params.slug);
   if (!data) return notFound();
 
-  const { persona, partidos, totalPartidos, victorias, empates, derrotas, porcentajes, rankingPartidos, debut, ultimo, jugadoresMasUtilizados, esTambienJugador } = data;
+  const { persona, partidos, totalPartidos, victorias, empates, derrotas, porcentajes, rankingPartidos, debut, ultimo, jugadoresMasUtilizados, esTambienJugador, rachas } = data;
 
   const nombreLargo = nombreCompleto(persona);
 
@@ -102,6 +103,37 @@ export default async function EntrenadorPage({ params }: { params: { slug: strin
           <div className="text-xs uppercase text-gray-500">Derrotas</div>
           <div className="text-2xl font-bold text-blanquiverde-verde">{derrotas}</div>
           <div className="text-xs text-gray-400">({porcentajes.d}%)</div>
+        </div>
+      </div>
+
+      {/* Rachas */}
+      <div className="mb-8">
+        <h2 className="font-serif font-bold text-lg text-blanquiverde-verde mb-3">Rachas</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <RachaCard
+            titulo="Mejor racha de victorias"
+            longitud={rachas.mejorRachaVictorias.longitud}
+            partidos={rachas.mejorRachaVictorias.partidos}
+            colorResultado="green"
+          />
+          <RachaCard
+            titulo="Peor racha de derrotas"
+            longitud={rachas.peorRachaDerrotas.longitud}
+            partidos={rachas.peorRachaDerrotas.partidos}
+            colorResultado="red"
+          />
+          <RachaCard
+            titulo="Mejor racha sin perder"
+            longitud={rachas.mejorRachaInvicto.longitud}
+            partidos={rachas.mejorRachaInvicto.partidos}
+            colorResultado="blue"
+          />
+          <RachaCard
+            titulo="Peor racha sin ganar"
+            longitud={rachas.peorRachaSinGanar.longitud}
+            partidos={rachas.peorRachaSinGanar.partidos}
+            colorResultado="gray"
+          />
         </div>
       </div>
 

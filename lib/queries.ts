@@ -978,6 +978,52 @@ export async function getEntrenadoresListado() {
     .sort((a: any, b: any) => b.partidos - a.partidos);
 }
 
+type PartidoResumen = {
+  fecha: string;
+  slug: string;
+  rival: string;
+  local: boolean;
+  golesCordoba: number | null;
+  golesRival: number | null;
+  resultado: 'V' | 'E' | 'D' | null;
+  competicion: string | null;
+  temporada: string | null;
+};
+
+// Encuentra la racha más larga (cronológicamente, en orden) que cumple el predicado.
+// Si hay empate entre varias rachas de igual longitud, se queda con la primera en el tiempo.
+function encontrarMejorRacha(partidos: PartidoResumen[], cumple: (r: PartidoResumen['resultado']) => boolean) {
+  let mejorInicio = -1,
+    mejorLongitud = 0;
+  let actualInicio = -1,
+    actualLongitud = 0;
+
+  partidos.forEach((p, i) => {
+    if (cumple(p.resultado)) {
+      if (actualLongitud === 0) actualInicio = i;
+      actualLongitud += 1;
+      if (actualLongitud > mejorLongitud) {
+        mejorLongitud = actualLongitud;
+        mejorInicio = actualInicio;
+      }
+    } else {
+      actualLongitud = 0;
+    }
+  });
+
+  if (mejorLongitud === 0) return { longitud: 0, partidos: [] as PartidoResumen[] };
+  return { longitud: mejorLongitud, partidos: partidos.slice(mejorInicio, mejorInicio + mejorLongitud) };
+}
+
+function calcularRachas(partidos: PartidoResumen[]) {
+  return {
+    mejorRachaVictorias: encontrarMejorRacha(partidos, (r) => r === 'V'),
+    peorRachaDerrotas: encontrarMejorRacha(partidos, (r) => r === 'D'),
+    mejorRachaInvicto: encontrarMejorRacha(partidos, (r) => r === 'V' || r === 'E'),
+    peorRachaSinGanar: encontrarMejorRacha(partidos, (r) => r === 'E' || r === 'D'),
+  };
+}
+
 export async function getEntrenadorBySlug(slug: string) {
   const { data: persona, error } = await supabase.from('personas').select('*').eq('slug', slug).single();
   if (error || !persona) return null;
@@ -1067,6 +1113,8 @@ export async function getEntrenadorBySlug(slug: string) {
     .eq('persona_id', persona.id);
   const esTambienJugador = (partidosComoJugador ?? 0) > 0;
 
+  const rachas = calcularRachas(partidosResumen);
+
   return {
     persona,
     partidos: partidosResumen,
@@ -1080,5 +1128,6 @@ export async function getEntrenadorBySlug(slug: string) {
     ultimo: partidosResumen[partidosResumen.length - 1],
     jugadoresMasUtilizados,
     esTambienJugador,
+    rachas,
   };
 }
