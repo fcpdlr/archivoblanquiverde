@@ -18,7 +18,7 @@ function fechaCorta(fecha: string) {
 }
 
 export default async function RecordsPage() {
-  const { mayoresVictorias, mayoresDerrotas, rachas, resultadosOrdenados, totalResultadosDistintos, meses, masJovenes, masVeteranos } =
+  const { mayoresVictorias, mayoresDerrotas, rachas, resultadosOrdenados, totalResultadosDistintos, scorigami, meses, masJovenes, masVeteranos } =
     await getRecordsData();
 
   const maxPj = Math.max(...meses.map((m: any) => m.pj), 1);
@@ -123,6 +123,79 @@ export default async function RecordsPage() {
               </Link>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Scorigami */}
+      <section>
+        <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-1">Scorigami</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Todos los marcadores del Córdoba (filas = goles del Córdoba, columnas = goles del rival). Las casillas en blanco
+          son marcadores que <span className="font-semibold">nunca se han dado</span> en toda la historia del club.
+          Cubierto: <span className="font-semibold">{scorigami.celdasOcupadas}</span> de{' '}
+          <span className="font-semibold">{scorigami.celdasTotal}</span> combinaciones posibles.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="border-collapse text-xs mx-auto">
+            <thead>
+              <tr>
+                <th className="p-1"></th>
+                {Array.from({ length: scorigami.maxGolesRival + 1 }).map((_, gr) => (
+                  <th key={gr} className="p-1 text-gray-400 font-normal w-8">
+                    {gr}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {scorigami.filas.map((fila: any[], gc: number) => (
+                <tr key={gc}>
+                  <th className="p-1 text-gray-400 font-normal text-right pr-2">{gc}</th>
+                  {fila.map((celda: any) => {
+                    const esVictoria = celda.golesCordoba > celda.golesRival;
+                    const esDerrota = celda.golesCordoba < celda.golesRival;
+                    const ocurrido = celda.cuenta > 0;
+                    const maxCuenta = Math.max(...scorigami.filas.flat().map((c: any) => c.cuenta), 1);
+                    const intensidad = ocurrido ? Math.min(1, celda.cuenta / maxCuenta) : 0;
+                    let bg = '#f3f4f6';
+                    if (ocurrido) {
+                      if (esVictoria) bg = `rgba(34,197,94,${0.15 + intensidad * 0.75})`;
+                      else if (esDerrota) bg = `rgba(239,68,68,${0.15 + intensidad * 0.75})`;
+                      else bg = `rgba(156,163,175,${0.2 + intensidad * 0.6})`;
+                    }
+                    const cell = (
+                      <div
+                        className="w-8 h-8 flex items-center justify-center text-[11px] font-semibold rounded text-gray-800"
+                        style={{ backgroundColor: bg }}
+                        title={`${celda.golesCordoba}-${celda.golesRival}: ${celda.cuenta} ${celda.cuenta === 1 ? 'vez' : 'veces'}`}
+                      >
+                        {ocurrido ? celda.cuenta : ''}
+                      </div>
+                    );
+                    return (
+                      <td key={celda.golesRival} className="p-0.5">
+                        {ocurrido && celda.slug ? <Link href={`/partidos/${celda.slug}`}>{cell}</Link> : cell}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-center gap-4 mt-3 text-xs text-gray-400">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(34,197,94,0.6)' }} /> Victoria
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(156,163,175,0.6)' }} /> Empate
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(239,68,68,0.6)' }} /> Derrota
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-gray-100 border" /> Nunca
+          </span>
         </div>
       </section>
 

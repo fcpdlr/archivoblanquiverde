@@ -1295,6 +1295,27 @@ export async function getRecordsData() {
     .map(([resultado, v]) => ({ resultado, ...v }))
     .sort((a, b) => b.cuenta - a.cuenta);
 
+  // Scorigami: rejilla goles del Córdoba (filas) x goles del rival (columnas)
+  const maxGolesCordoba = Math.max(...decididos.map((p) => p.golesCordoba!), 4);
+  const maxGolesRival = Math.max(...decididos.map((p) => p.golesRival!), 4);
+  const filasScorigami: { golesCordoba: number; golesRival: number; cuenta: number; slug: string | null }[][] = [];
+  for (let gc = 0; gc <= maxGolesCordoba; gc++) {
+    const fila = [];
+    for (let gr = 0; gr <= maxGolesRival; gr++) {
+      const entry = frecuencia.get(`${gc}-${gr}`);
+      fila.push({ golesCordoba: gc, golesRival: gr, cuenta: entry?.cuenta ?? 0, slug: entry?.ejemplo.slug ?? null });
+    }
+    filasScorigami.push(fila);
+  }
+  const celdasTotal = (maxGolesCordoba + 1) * (maxGolesRival + 1);
+  const scorigami = {
+    filas: filasScorigami,
+    maxGolesCordoba,
+    maxGolesRival,
+    celdasOcupadas: resultadosOrdenados.length,
+    celdasTotal,
+  };
+
   const NOMBRES_MES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -1322,6 +1343,7 @@ export async function getRecordsData() {
     rachas,
     resultadosOrdenados,
     totalResultadosDistintos: resultadosOrdenados.length,
+    scorigami,
     meses,
     masJovenes,
     masVeteranos,
