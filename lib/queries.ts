@@ -934,24 +934,23 @@ async function getPartidosDirigidosRaw(personaId?: number) {
 }
 
 export async function getEntrenadoresListado() {
+  type PartidoResumenLite = { fecha: string; resultado: 'V' | 'E' | 'D' | null };
   const filas = await getPartidosDirigidosRaw();
 
-  type Fila = { persona_id: number; partidos: number; v: number; e: number; d: number };
-  const porEntrenador = new Map<number, Fila>();
+  const porEntrenador = new Map<number, PartidoResumenLite[]>();
 
   for (const f of filas) {
     const p: any = f.partido;
     const cordobaEsLocal = p.equipo_local.id === CORDOBA_ID;
     const golesCordoba = cordobaEsLocal ? p.goles_local : p.goles_visitante;
     const golesRival = cordobaEsLocal ? p.goles_visitante : p.goles_local;
-    const actual = porEntrenador.get(f.persona_id) ?? { persona_id: f.persona_id, partidos: 0, v: 0, e: 0, d: 0 };
-    actual.partidos += 1;
+    let resultado: 'V' | 'E' | 'D' | null = null;
     if (golesCordoba != null && golesRival != null) {
-      if (golesCordoba > golesRival) actual.v += 1;
-      else if (golesCordoba === golesRival) actual.e += 1;
-      else actual.d += 1;
+      resultado = golesCordoba > golesRival ? 'V' : golesCordoba === golesRival ? 'E' : 'D';
     }
-    porEntrenador.set(f.persona_id, actual);
+    const lista = porEntrenador.get(f.persona_id) ?? [];
+    lista.push({ fecha: p.fecha, resultado });
+    porEntrenador.set(f.persona_id, lista);
   }
 
   const ids = Array.from(porEntrenador.keys());
@@ -961,19 +960,33 @@ export async function getEntrenadoresListado() {
     .in('id', ids);
   const personasPorId = new Map((personasData ?? []).map((p: any) => [p.id, p]));
 
-  return Array.from(porEntrenador.values())
-    .map((f) => {
-      const persona: any = personasPorId.get(f.persona_id);
+  return Array.from(porEntrenador.entries())
+    .map(([persona_id, partidos]) => {
+      const persona: any = personasPorId.get(persona_id);
       if (!persona) return null;
+      const ordenados = [...partidos].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+      let v = 0,
+        e = 0,
+        d = 0;
+      for (const p of ordenados) {
+        if (p.resultado === 'V') v += 1;
+        else if (p.resultado === 'E') e += 1;
+        else if (p.resultado === 'D') d += 1;
+      }
+      const totalDecididos = v + e + d;
+      const rachas = calcularRachas(ordenados as any);
       return {
         id: persona.id,
         nombre_mostrado: persona.nombre_mostrado,
         slug: persona.slug,
         foto_url: persona.foto_url,
-        partidos: f.partidos,
-        v: f.v,
-        e: f.e,
-        d: f.d,
+        partidos: ordenados.length,
+        v,
+        e,
+        d,
+        pctV: totalDecididos > 0 ? (v / totalDecididos) * 100 : 0,
+        mejorRachaVictorias: rachas.mejorRachaVictorias.longitud,
+        mejorRachaInvicto: rachas.mejorRachaInvicto.longitud,
       };
     })
     .filter(Boolean)
