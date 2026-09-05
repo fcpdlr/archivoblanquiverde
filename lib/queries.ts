@@ -705,7 +705,8 @@ async function getEfemeridesHoy() {
   const ultimos = ultimosHoy.filter((d: any) => (partidosPorPersona.get(d.persona_id) ?? 0) >= UMBRAL_PARTIDOS);
 
   // 3) Primer gol y goles de hito (cada 50) marcados hoy.
-  const hitosGol = [50, 100, 150, 200, 250, 300];
+  const hitosGol = Array.from({ length: 20 }, (_, i) => (i + 1) * 10); // 10, 20, 30... 200
+  const hitosPartidosEntrenador = [50, 100, 150, 200, 250, 300];
   const [{ data: primerGolData }, { data: hitoGolData }] = await Promise.all([
     supabase.from('v_gol_numero').select('persona_id, numero, fecha').eq('numero', 1),
     supabase.from('v_gol_numero').select('persona_id, numero, fecha').in('numero', hitosGol),
@@ -716,7 +717,7 @@ async function getEfemeridesHoy() {
   // 4) Debut y partidos de hito (cada 50) de entrenadores.
   const [{ data: debutEntData }, { data: hitoEntData }] = await Promise.all([
     supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').eq('numero', 1),
-    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').in('numero', hitosGol),
+    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').in('numero', hitosPartidosEntrenador),
   ]);
   const debutEntHoy = (debutEntData ?? []).filter((e: any) => esHoy(e.fecha));
   const hitoEntHoy = (hitoEntData ?? []).filter((e: any) => esHoy(e.fecha));
