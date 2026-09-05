@@ -1,8 +1,31 @@
 // @ts-nocheck
 // Tipado laxo a propósito por ahora (ver nota en commits anteriores).
 import { getPartidoBySlug } from '@/lib/queries';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const { data: p } = await supabase
+    .from('partidos')
+    .select(
+      `fecha, goles_local, goles_visitante,
+       equipo_local:equipos!partidos_equipo_local_id_fkey(nombre_corto),
+       equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(nombre_corto),
+       edicion:ediciones_competicion(temporada:temporadas(etiqueta))`
+    )
+    .eq('slug', params.slug)
+    .single();
+  if (!p) return { title: 'Partido no encontrado · Archivo Blanquiverde' };
+  const local = (p as any).equipo_local?.nombre_corto ?? '?';
+  const visitante = (p as any).equipo_visitante?.nombre_corto ?? '?';
+  const temporada = (p as any).edicion?.temporada?.etiqueta;
+  const marcador = p.goles_local != null ? ` ${p.goles_local}-${p.goles_visitante}` : '';
+  return {
+    title: `${local}${marcador} ${visitante}${temporada ? ` (${temporada})` : ''} · Archivo Blanquiverde`,
+    description: `Resultado, alineaciones y goles del ${local} ${p.goles_local ?? '?'}-${p.goles_visitante ?? '?'} ${visitante}.`,
+  };
+}
 
 function formatFecha(fecha: string) {
   const d = new Date(fecha + 'T00:00:00');

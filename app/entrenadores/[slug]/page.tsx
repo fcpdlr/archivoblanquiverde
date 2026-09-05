@@ -1,9 +1,19 @@
 // @ts-nocheck
 import { getEntrenadorBySlug } from '@/lib/queries';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import PartidosDirigidosList from './PartidosDirigidosList';
 import RachaCard from '@/app/components/RachaCard';
+
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const { data: persona } = await supabase.from('personas').select('nombre_mostrado').eq('slug', params.slug).single();
+  if (!persona) return { title: 'Entrenador no encontrado · Archivo Blanquiverde' };
+  return {
+    title: `${persona.nombre_mostrado} · Archivo Blanquiverde`,
+    description: `Partidos dirigidos, rachas y resultados de ${persona.nombre_mostrado} como entrenador del Córdoba CF.`,
+  };
+}
 
 function nombreCompleto(persona: any) {
   const partes = [persona.nombre, persona.apellido1, persona.apellido2].filter(Boolean);

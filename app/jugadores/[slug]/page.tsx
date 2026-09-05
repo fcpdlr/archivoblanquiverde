@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { getJugadorBySlug } from '@/lib/queries';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SeasonTable from './SeasonTable';
@@ -23,6 +24,20 @@ function nombreCompleto(persona: any) {
 
 function fechaCorta(fecha: string) {
   return new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const { data: persona } = await supabase
+    .from('personas')
+    .select('nombre_mostrado, posicion_general, posicion_especifica')
+    .eq('slug', params.slug)
+    .single();
+  if (!persona) return { title: 'Jugador no encontrado · Archivo Blanquiverde' };
+  const posicion = persona.posicion_especifica || persona.posicion_general || '';
+  return {
+    title: `${persona.nombre_mostrado} · Archivo Blanquiverde`,
+    description: `Estadísticas, partidos y goles de ${persona.nombre_mostrado}${posicion ? ` (${posicion})` : ''} con el Córdoba CF.`,
+  };
 }
 
 export default async function JugadorPage({ params }: { params: { slug: string } }) {

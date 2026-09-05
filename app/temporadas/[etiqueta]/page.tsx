@@ -3,6 +3,13 @@ import { getTemporadaByEtiqueta } from '@/lib/queries';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+export async function generateMetadata({ params }: { params: { etiqueta: string } }) {
+  return {
+    title: `Temporada ${params.etiqueta} · Archivo Blanquiverde`,
+    description: `Partidos, plantilla y resultados del Córdoba CF en la temporada ${params.etiqueta}.`,
+  };
+}
+
 const CORDOBA_ID = 74;
 
 function esCopa(nombre: string) {
