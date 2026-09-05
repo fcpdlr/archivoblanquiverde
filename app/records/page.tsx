@@ -151,9 +151,9 @@ export default async function RecordsPage() {
         </div>
       </section>
 
-      {/* Debuts */}
+      {/* Jóvenes y veteranos */}
       <section>
-        <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-4">Debuts más jóvenes y más veteranos</h2>
+        <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-4">Los más jóvenes y los más veteranos</h2>
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <h3 className="text-sm uppercase tracking-wide text-gray-500 mb-2">Debuts más jóvenes</h3>
@@ -172,7 +172,7 @@ export default async function RecordsPage() {
             </ol>
           </div>
           <div>
-            <h3 className="text-sm uppercase tracking-wide text-gray-500 mb-2">Debuts más veteranos</h3>
+            <h3 className="text-sm uppercase tracking-wide text-gray-500 mb-2">Más veteranos (en su último partido)</h3>
             <ol className="border rounded-lg divide-y">
               {masVeteranos.map((j: any, i: number) => (
                 <li key={j.slug} className="flex items-center justify-between px-4 py-3 text-sm">

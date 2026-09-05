@@ -1196,12 +1196,34 @@ async function getDebutsEdades() {
       return {
         nombre_mostrado: row.persona.nombre_mostrado,
         slug: row.persona.slug,
-        fechaDebut: row.fecha_debut,
+        fecha: row.fecha_debut,
         edadAnios: Math.floor(edadDias / 365.25),
         edadDiasResto: Math.floor(edadDias % 365.25),
       };
     })
     .filter((d: any) => d.edadAnios >= 14 && d.edadAnios <= 45); // descarta fechas de nacimiento con errores evidentes
+}
+
+async function getEdadesUltimoPartido() {
+  const { data } = await supabase
+    .from('v_jugador_ultimo')
+    .select('fecha_ultimo, persona:personas(nombre_mostrado, slug, fecha_nacimiento)');
+
+  return (data ?? [])
+    .filter((row: any) => row.persona?.fecha_nacimiento)
+    .map((row: any) => {
+      const edadDias = Math.floor(
+        (new Date(row.fecha_ultimo).getTime() - new Date(row.persona.fecha_nacimiento).getTime()) / 86400000
+      );
+      return {
+        nombre_mostrado: row.persona.nombre_mostrado,
+        slug: row.persona.slug,
+        fecha: row.fecha_ultimo,
+        edadAnios: Math.floor(edadDias / 365.25),
+        edadDiasResto: Math.floor(edadDias % 365.25),
+      };
+    })
+    .filter((d: any) => d.edadAnios >= 14 && d.edadAnios <= 50); // descarta fechas de nacimiento con errores evidentes
 }
 
 export async function getCumpleanosHoy() {
@@ -1288,7 +1310,11 @@ export async function getRecordsData() {
 
   const debuts = await getDebutsEdades();
   const masJovenes = [...debuts].sort((a, b) => a.edadAnios - b.edadAnios || a.edadDiasResto - b.edadDiasResto).slice(0, 5);
-  const masVeteranos = [...debuts].sort((a, b) => b.edadAnios - a.edadAnios || b.edadDiasResto - a.edadDiasResto).slice(0, 5);
+
+  const edadesUltimoPartido = await getEdadesUltimoPartido();
+  const masVeteranos = [...edadesUltimoPartido]
+    .sort((a, b) => b.edadAnios - a.edadAnios || b.edadDiasResto - a.edadDiasResto)
+    .slice(0, 5);
 
   return {
     mayoresVictorias,
