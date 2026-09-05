@@ -12,10 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <header className="bg-blanquiverde-verde text-white">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="font-bold text-lg">
+            <Link href="/" className="font-bold text-lg flex-1">
               ARCHIVO BLANQUIVERDE
             </Link>
-            <nav className="hidden md:flex gap-6 text-sm">
+            <nav className="hidden md:flex gap-6 text-sm shrink-0">
               <Link href="/partidos">Partidos</Link>
               <Link href="/temporadas">Temporadas</Link>
               <Link href="/jugadores">Jugadores</Link>
