@@ -178,6 +178,7 @@ export default async function PartidoPage({ params }: { params: { slug: string }
           {titulares.map((c) => (
             <li key={c.persona.id} className="flex justify-between items-center">
               <span>
+                {c.dorsal != null && <span className="text-gray-400 font-mono text-xs mr-1.5">{c.dorsal}</span>}
                 <NombrePersona persona={c.persona} esCordoba={equipo.es_cordoba} />
                 <IconosJugador personaId={c.persona.id} />
               </span>
@@ -209,6 +210,7 @@ export default async function PartidoPage({ params }: { params: { slug: string }
               {suplentes.map((c) => (
                 <li key={c.persona.id} className="flex justify-between items-center text-gray-600">
                   <span>
+                    {c.dorsal != null && <span className="text-gray-400 font-mono text-xs mr-1.5">{c.dorsal}</span>}
                     <NombrePersona persona={c.persona} esCordoba={equipo.es_cordoba} />
                     <IconosJugador personaId={c.persona.id} />
                   </span>

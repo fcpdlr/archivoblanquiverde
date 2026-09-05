@@ -35,7 +35,7 @@ export async function getPartidoBySlug(slug: string) {
       supabase
         .from('convocatorias')
         .select(
-          `equipo_id, jugo, persona:personas(id, nombre_mostrado, slug),
+          `equipo_id, jugo, dorsal, persona:personas(id, nombre_mostrado, slug),
            participacion:participaciones(titular, minuto_entra, minuto_sale)`
         )
         .eq('partido_id', partido.id),
@@ -435,7 +435,7 @@ export async function getTemporadaByEtiqueta(etiqueta: string) {
       const { data: pagina } = await supabase
         .from('convocatorias')
         .select(
-          `persona_id, jugo, persona:personas(id, nombre_mostrado, slug, posicion_general, posicion_especifica),
+          `persona_id, jugo, dorsal, partido_id, persona:personas(id, nombre_mostrado, slug, posicion_general, posicion_especifica),
            participacion:participaciones(titular)`
         )
         .eq('equipo_id', CORDOBA_ID)
@@ -471,7 +471,12 @@ export async function getTemporadaByEtiqueta(etiqueta: string) {
       tarjetasPorPersona.set(t.persona_id, (tarjetasPorPersona.get(t.persona_id) ?? 0) + 1);
     }
 
+    // Orden cronológico real de los partidos, para saber cuál es el dorsal "más reciente"
+    // de cada jugador (puede cambiar de número a mitad de temporada).
+    const ordenPartido = new Map(partidosOrdenados.map((p: any, i: number) => [p.id, i]));
+
     const porJugador = new Map<number, any>();
+    const ultimoOrdenDorsal = new Map<number, number>();
     for (const f of filas) {
       const p: any = f.persona;
       if (!p) continue;
@@ -483,9 +488,17 @@ export async function getTemporadaByEtiqueta(etiqueta: string) {
         posicion_especifica: p.posicion_especifica,
         partidos: 0,
         titularidades: 0,
+        dorsal: null as number | null,
       };
       actual.partidos += 1;
       if (f.participacion?.titular) actual.titularidades += 1;
+      if (f.dorsal != null) {
+        const orden = ordenPartido.get(f.partido_id) ?? -1;
+        if (orden >= (ultimoOrdenDorsal.get(p.id) ?? -1)) {
+          actual.dorsal = f.dorsal;
+          ultimoOrdenDorsal.set(p.id, orden);
+        }
+      }
       porJugador.set(p.id, actual);
     }
 

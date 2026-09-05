@@ -148,6 +148,7 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-400 text-xs uppercase border-b bg-gray-50">
+                <th className="py-2 px-4 text-center">#</th>
                 <th className="py-2 px-4">Jugador</th>
                 <th className="py-2 px-4">Posición</th>
                 <th className="py-2 px-4 text-center">Partidos</th>
@@ -159,6 +160,7 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
             <tbody>
               {plantilla.map((j: any) => (
                 <tr key={j.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="py-2 px-4 text-center text-gray-400 font-mono">{j.dorsal ?? ''}</td>
                   <td className="py-2 px-4">
                     <Link href={`/jugadores/${j.slug}`} className="hover:underline font-medium">
                       {j.nombre_mostrado}
