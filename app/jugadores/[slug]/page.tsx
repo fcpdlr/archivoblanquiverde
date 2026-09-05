@@ -278,7 +278,7 @@ export default async function JugadorPage({ params }: { params: { slug: string }
       {/* Resumen por temporadas */}
       <div className="mb-6">
         <h2 className="font-serif font-bold text-lg text-blanquiverde-verde mb-3">📊 Resumen por temporadas</h2>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
           <SeasonTable filas={filasTemporada} />
         </div>
         <p className="text-xs text-gray-400 text-center mt-3 font-serif">Los datos pueden estar sujetos a revisión.</p>

@@ -37,7 +37,7 @@ export default function SeasonTable({ filas }: { filas: TemporadaFila[] }) {
   return (
     <table className="w-full text-sm min-w-[600px]">
       <thead>
-        <tr className="text-left text-gray-500 border-b-2 border-gray-800 font-serif">
+        <tr className="text-left text-gray-500 border-b-2 border-blanquiverde-verde font-serif">
           <th className="py-2 pr-4 text-center">#</th>
           <th className="py-2 pr-4">Temporada</th>
           <th className="py-2 pr-4">Edad</th>
@@ -56,7 +56,7 @@ export default function SeasonTable({ filas }: { filas: TemporadaFila[] }) {
             <>
               <tr
                 key={f.temporada}
-                className={`border-b last:border-0 font-serif ${puedeExpandir ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                className={`border-b border-blanquiverde-verde/10 last:border-0 font-serif odd:bg-white even:bg-blanquiverde-verde/5 ${puedeExpandir ? 'cursor-pointer hover:bg-blanquiverde-verde/10' : ''}`}
                 onClick={() => puedeExpandir && toggle(f.temporada)}
               >
                 <td className="py-2 pr-4 text-center text-gray-400 font-mono">{f.dorsal ?? ''}</td>
@@ -78,7 +78,7 @@ export default function SeasonTable({ filas }: { filas: TemporadaFila[] }) {
               </tr>
               {abierta &&
                 f.competiciones.map((c) => (
-                  <tr key={f.temporada + c.competicion} className="border-b last:border-0 text-gray-500 bg-gray-50 text-xs">
+                  <tr key={f.temporada + c.competicion} className="border-b border-blanquiverde-verde/10 last:border-0 text-gray-500 bg-blanquiverde-verde/10 text-xs">
                     <td></td>
                     <td className="py-1.5 pr-4 pl-6">{c.competicion}</td>
                     <td className="py-1.5 pr-4"></td>

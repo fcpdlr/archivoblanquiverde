@@ -54,11 +54,11 @@ export default function ListadoJugadores({ jugadores }: { jugadores: Jugador[] }
 
       <p className="text-sm text-gray-500 mb-3">{filtrados.length} jugadores</p>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-gray-400 text-xs uppercase border-b">
-              <th className="py-2 pr-4">#</th>
+            <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
+              <th className="py-2 pr-4 pl-4">#</th>
               <th className="py-2 pr-4">Jugador</th>
               <th className="py-2 pr-4">Posición</th>
               <th className="py-2 pr-4 text-center">Partidos</th>
@@ -68,8 +68,11 @@ export default function ListadoJugadores({ jugadores }: { jugadores: Jugador[] }
           </thead>
           <tbody>
             {filtrados.map((j, i) => (
-              <tr key={j.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="py-2 pr-4 text-gray-400">{i + 1}</td>
+              <tr
+                key={j.id}
+                className="border-b border-blanquiverde-verde/10 last:border-0 odd:bg-white even:bg-blanquiverde-verde/5 hover:bg-blanquiverde-verde/10"
+              >
+                <td className="py-2 pr-4 pl-4 text-gray-400">{i + 1}</td>
                 <td className="py-2 pr-4">
                   <Link href={`/jugadores/${j.slug}`} className="hover:underline font-medium">
                     {j.nombre_mostrado}

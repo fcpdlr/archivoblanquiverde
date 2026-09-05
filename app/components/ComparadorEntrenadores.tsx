@@ -48,7 +48,7 @@ export default function ComparadorEntrenadores({ entrenadores }: { entrenadores:
     const activa = orden === col;
     return (
       <th
-        className={`py-2 px-3 text-center cursor-pointer select-none whitespace-nowrap ${activa ? 'text-blanquiverde-verde' : ''}`}
+        className={`py-2 px-3 text-center cursor-pointer select-none whitespace-nowrap ${activa ? 'text-white font-bold underline decoration-2 underline-offset-2' : ''}`}
         onClick={() => cambiarOrden(col)}
       >
         {label}
@@ -58,10 +58,10 @@ export default function ComparadorEntrenadores({ entrenadores }: { entrenadores:
   }
 
   return (
-    <div className="overflow-x-auto border rounded-lg">
+    <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-gray-400 text-xs uppercase border-b bg-gray-50">
+          <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
             <th className="py-2 px-4">#</th>
             <th className="py-2 px-4">Entrenador</th>
             {COLUMNAS.map((c) => (
@@ -71,7 +71,10 @@ export default function ComparadorEntrenadores({ entrenadores }: { entrenadores:
         </thead>
         <tbody>
           {ordenados.map((e, i) => (
-            <tr key={e.id} className="border-b last:border-0 hover:bg-gray-50">
+            <tr
+              key={e.id}
+              className="border-b border-blanquiverde-verde/10 last:border-0 odd:bg-white even:bg-blanquiverde-verde/5 hover:bg-blanquiverde-verde/10"
+            >
               <td className="py-2 px-4 text-gray-400">{i + 1}</td>
               <td className="py-2 px-4">
                 <Link href={`/entrenadores/${e.slug}`} className="hover:underline font-medium">

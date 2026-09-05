@@ -45,7 +45,7 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
     }
     const color = resultado === 'V' ? 'text-green-600' : resultado === 'D' ? 'text-red-600' : 'text-gray-500';
     return (
-      <tr className="border-b last:border-0 hover:bg-gray-50">
+      <tr className="border-b border-blanquiverde-verde/10 last:border-0 odd:bg-white even:bg-blanquiverde-verde/5 hover:bg-blanquiverde-verde/10">
         <td className="py-2 pr-4 text-gray-500">{new Date(p.fecha + 'T00:00:00').toLocaleDateString('es-ES')}</td>
         <td className="py-2 pr-4">{cordobaEsLocal ? 'Casa' : 'Fuera'}</td>
         <td className="py-2 pr-4">
@@ -144,10 +144,10 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
       {/* Plantilla */}
       <div>
         <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-3">Plantilla</h2>
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-400 text-xs uppercase border-b bg-gray-50">
+              <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
                 <th className="py-2 px-4 text-center">#</th>
                 <th className="py-2 px-4">Jugador</th>
                 <th className="py-2 px-4">Posición</th>
@@ -159,7 +159,10 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
             </thead>
             <tbody>
               {plantilla.map((j: any) => (
-                <tr key={j.id} className="border-b last:border-0 hover:bg-gray-50">
+                <tr
+                  key={j.id}
+                  className="border-b border-blanquiverde-verde/10 last:border-0 odd:bg-white even:bg-blanquiverde-verde/5 hover:bg-blanquiverde-verde/10"
+                >
                   <td className="py-2 px-4 text-center text-gray-400 font-mono">{j.dorsal ?? ''}</td>
                   <td className="py-2 px-4">
                     <Link href={`/jugadores/${j.slug}`} className="hover:underline font-medium">
@@ -184,7 +187,7 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
           <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-3">
             Copa {competicionesCopa.map((c: any) => `(${c.partidos} partidos, ${c.victorias}V ${c.empates}E ${c.derrotas}D)`).join(', ')}
           </h2>
-          <div className="overflow-x-auto border rounded-lg">
+          <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
             <table className="w-full text-sm">
               <tbody>
                 {partidos
@@ -201,10 +204,10 @@ export default async function TemporadaPage({ params }: { params: { etiqueta: st
       {/* Listado completo de partidos */}
       <div>
         <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-3">Todos los partidos</h2>
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-400 text-xs uppercase border-b bg-gray-50">
+              <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
                 <th className="py-2 px-4">Fecha</th>
                 <th className="py-2 px-4">Local/Fuera</th>
                 <th className="py-2 px-4">Rival</th>

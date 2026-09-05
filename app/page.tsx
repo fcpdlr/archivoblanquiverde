@@ -317,10 +317,10 @@ export default async function HomePage() {
       {rivalesTop.length > 0 && (
         <section className="max-w-2xl mx-auto">
           <h2 className="font-serif text-xl font-bold text-blanquiverde-verde mb-4">Rivales históricos</h2>
-          <div className="overflow-x-auto border rounded-lg">
+          <div className="overflow-x-auto border border-blanquiverde-verde/40 rounded-lg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-400 text-xs uppercase border-b bg-gray-50">
+                <tr className="text-left text-white text-xs uppercase bg-blanquiverde-verde">
                   <th className="py-2 px-4">Rival</th>
                   <th className="py-2 px-4 text-center">PJ</th>
                   <th className="py-2 px-4 text-center">V</th>
@@ -330,7 +330,10 @@ export default async function HomePage() {
               </thead>
               <tbody>
                 {rivalesTop.map((r: any) => (
-                  <tr key={r.id} className="border-b last:border-0">
+                  <tr
+                    key={r.id}
+                    className="border-b border-blanquiverde-verde/10 last:border-0 odd:bg-white even:bg-blanquiverde-verde/5"
+                  >
                     <td className="py-2 px-4 font-medium">{r.nombre}</td>
                     <td className="py-2 px-4 text-center">{r.pj}</td>
                     <td className="py-2 px-4 text-center">{r.v}</td>
