@@ -161,6 +161,8 @@ export async function getJugadorBySlug(slug: string) {
         .select('persona:personas(id, nombre_mostrado, slug)')
         .eq('equipo_id', CORDOBA_ID)
         .in('partido_id', partidoIds)
+        .order('partido_id', { ascending: true })
+        .order('persona_id', { ascending: true })
         .range(desdeE, desdeE + PAGE_E - 1);
       if (!pagina || pagina.length === 0) break;
       filasEntrenador.push(...pagina);
@@ -196,6 +198,8 @@ export async function getJugadorBySlug(slug: string) {
         .eq('jugo', true)
         .in('partido_id', partidoIds)
         .neq('persona_id', persona.id)
+        .order('partido_id', { ascending: true })
+        .order('persona_id', { ascending: true })
         .range(desde, desde + PAGE - 1);
       if (!pagina || pagina.length === 0) break;
       otrasConv.push(...pagina);
@@ -248,6 +252,7 @@ export async function getJugadoresListado() {
       .from('v_jugador_partidos')
       .select('persona_id, partidos, titularidades')
       .order('partidos', { ascending: false })
+      .order('persona_id', { ascending: true })
       .range(desde, desde + PAGE - 1);
     if (!pagina || pagina.length === 0) break;
     filas.push(...pagina);
@@ -436,6 +441,8 @@ export async function getTemporadaByEtiqueta(etiqueta: string) {
         .eq('equipo_id', CORDOBA_ID)
         .eq('jugo', true)
         .in('partido_id', partidoIds)
+        .order('partido_id', { ascending: true })
+        .order('persona_id', { ascending: true })
         .range(desde, desde + PAGE - 1);
       if (!pagina || pagina.length === 0) break;
       filas.push(...pagina);
@@ -597,6 +604,7 @@ async function getEfemeridesHoy() {
       )
       .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
       .not('goles_local', 'is', null)
+      .order('id', { ascending: true })
       .range(desde, desde + PAGE - 1);
     if (!pagina || pagina.length === 0) break;
     filas.push(...pagina);
@@ -745,11 +753,12 @@ async function getRivalesTopHome(limite = 5) {
     const { data: pagina } = await supabase
       .from('partidos')
       .select(
-        `goles_local, goles_visitante,
+        `id, goles_local, goles_visitante,
          equipo_local:equipos!partidos_equipo_local_id_fkey(id, nombre_corto, slug, escudo_url),
          equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(id, nombre_corto, slug, escudo_url)`
       )
       .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
+      .order('id', { ascending: true })
       .range(desde, desde + PAGE - 1);
     if (!pagina || pagina.length === 0) break;
     filas.push(...pagina);
@@ -943,6 +952,8 @@ async function getPartidosDirigidosRaw(personaId?: number) {
            edicion:ediciones_competicion(temporada:temporadas(etiqueta), competicion:competiciones(nombre_actual)))`
       )
       .eq('equipo_id', CORDOBA_ID)
+      .order('partido_id', { ascending: true })
+      .order('persona_id', { ascending: true })
       .range(desde, desde + PAGE - 1);
     if (personaId) query = query.eq('persona_id', personaId);
     const { data: pagina } = await query;
@@ -1121,6 +1132,8 @@ export async function getEntrenadorBySlug(slug: string) {
         .eq('equipo_id', CORDOBA_ID)
         .eq('jugo', true)
         .in('partido_id', partidoIds)
+        .order('partido_id', { ascending: true })
+        .order('persona_id', { ascending: true })
         .range(desde, desde + PAGE - 1);
       if (!pagina || pagina.length === 0) break;
       filasConv.push(...pagina);
@@ -1269,7 +1282,11 @@ export async function getCumpleanosHoy() {
     const PAGE = 1000;
     let desde = 0;
     while (true) {
-      const { data: pagina } = await supabase.from('v_jugador_partidos').select('persona_id').range(desde, desde + PAGE - 1);
+      const { data: pagina } = await supabase
+        .from('v_jugador_partidos')
+        .select('persona_id')
+        .order('persona_id', { ascending: true })
+        .range(desde, desde + PAGE - 1);
       if (!pagina || pagina.length === 0) break;
       pagina.forEach((r: any) => idsJugadores.add(r.persona_id));
       if (pagina.length < PAGE) break;
