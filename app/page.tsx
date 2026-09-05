@@ -125,43 +125,106 @@ export default async function HomePage() {
       )}
 
       {/* 5. Tal día como hoy */}
-      {(efemerides.length > 0 || cumpleanosHoy.length > 0) && (
-        <section className="max-w-2xl mx-auto">
-          <h2 className="font-serif text-xl font-bold text-blanquiverde-verde mb-4">Tal día como hoy</h2>
-          {efemerides.length > 0 && (
-            <ul className="border rounded-lg divide-y mb-3">
-              {efemerides.map((e: any) => {
-                const resultado = e.golesCordoba > e.golesRival ? 'V' : e.golesCordoba === e.golesRival ? 'E' : 'D';
-                const color = resultado === 'V' ? 'text-green-600' : resultado === 'D' ? 'text-red-600' : 'text-gray-500';
-                return (
-                  <li key={e.slug}>
-                    <Link href={`/partidos/${e.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-sm">
-                      <span>
-                        Córdoba {e.golesCordoba}-{e.golesRival} {e.rival}
-                        {e.temporada && <span className="text-gray-400"> ({e.temporada})</span>}
-                      </span>
-                      <span className={`font-semibold ${color}`}>{resultado}</span>
-                    </Link>
+      {(() => {
+        const totalHitos =
+          efemerides.resultados.length +
+          efemerides.debuts.length +
+          efemerides.ultimos.length +
+          efemerides.golesHito.length +
+          efemerides.entrenadorDebut.length +
+          efemerides.entrenadorHito.length;
+        if (totalHitos === 0 && cumpleanosHoy.length === 0) return null;
+
+        function LineaPartido({ p }: { p: any }) {
+          return (
+            <Link href={`/partidos/${p.slug}`} className="hover:underline">
+              Córdoba {p.golesCordoba}-{p.golesRival} {p.rival}
+              {p.temporada && <span className="text-gray-400"> ({p.temporada})</span>}
+            </Link>
+          );
+        }
+
+        return (
+          <section className="max-w-2xl mx-auto">
+            <h2 className="font-serif text-xl font-bold text-blanquiverde-verde mb-4">Tal día como hoy</h2>
+
+            {efemerides.resultados.length > 0 && (
+              <ul className="border rounded-lg divide-y mb-3">
+                {efemerides.resultados.map((e: any) => {
+                  const resultado = e.golesCordoba > e.golesRival ? 'V' : e.golesCordoba === e.golesRival ? 'E' : 'D';
+                  const color = resultado === 'V' ? 'text-green-600' : resultado === 'D' ? 'text-red-600' : 'text-gray-500';
+                  return (
+                    <li key={e.slug}>
+                      <Link href={`/partidos/${e.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-sm">
+                        <span>
+                          Córdoba {e.golesCordoba}-{e.golesRival} {e.rival}
+                          {e.temporada && <span className="text-gray-400"> ({e.temporada})</span>}
+                        </span>
+                        <span className={`font-semibold ${color}`}>{resultado}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {(efemerides.debuts.length > 0 ||
+              efemerides.ultimos.length > 0 ||
+              efemerides.golesHito.length > 0 ||
+              efemerides.entrenadorDebut.length > 0 ||
+              efemerides.entrenadorHito.length > 0) && (
+              <ul className="border rounded-lg divide-y mb-3 text-sm">
+                {efemerides.debuts.map((d: any) => (
+                  <li key={`debut-${d.persona.slug}`} className="px-4 py-3">
+                    🆕 <Link href={`/jugadores/${d.persona.slug}`} className="hover:underline font-medium">{d.persona.nombre_mostrado}</Link> debutó —{' '}
+                    <LineaPartido p={d.partido} />
                   </li>
-                );
-              })}
-            </ul>
-          )}
-          {cumpleanosHoy.length > 0 && (
-            <div className="border rounded-lg px-4 py-3 text-sm">
-              <span className="text-gray-400">🎂 Cumpleaños: </span>
-              {cumpleanosHoy.map((c: any, i: number) => (
-                <span key={c.slug}>
-                  <Link href={`/${c.esJugador ? 'jugadores' : 'entrenadores'}/${c.slug}`} className="hover:underline">
-                    {c.nombre_mostrado}
-                  </Link>
-                  {i < cumpleanosHoy.length - 1 && ', '}
-                </span>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+                ))}
+                {efemerides.ultimos.map((d: any) => (
+                  <li key={`ultimo-${d.persona.slug}`} className="px-4 py-3">
+                    🏁 Último partido de <Link href={`/jugadores/${d.persona.slug}`} className="hover:underline font-medium">{d.persona.nombre_mostrado}</Link> —{' '}
+                    <LineaPartido p={d.partido} />
+                  </li>
+                ))}
+                {efemerides.golesHito.map((g: any, i: number) => (
+                  <li key={`gol-${g.persona.slug}-${g.numero}-${i}`} className="px-4 py-3">
+                    ⚽ {g.numero === 1 ? 'Primer gol de' : `Gol ${g.numero} de`}{' '}
+                    <Link href={`/jugadores/${g.persona.slug}`} className="hover:underline font-medium">{g.persona.nombre_mostrado}</Link> —{' '}
+                    <LineaPartido p={g.partido} />
+                  </li>
+                ))}
+                {efemerides.entrenadorDebut.map((e: any) => (
+                  <li key={`entdebut-${e.persona.slug}`} className="px-4 py-3">
+                    🎖️ <Link href={`/entrenadores/${e.persona.slug}`} className="hover:underline font-medium">{e.persona.nombre_mostrado}</Link> debutó como entrenador —{' '}
+                    <LineaPartido p={e.partido} />
+                  </li>
+                ))}
+                {efemerides.entrenadorHito.map((e: any, i: number) => (
+                  <li key={`enthito-${e.persona.slug}-${e.numero}-${i}`} className="px-4 py-3">
+                    🎖️ Partido {e.numero} de{' '}
+                    <Link href={`/entrenadores/${e.persona.slug}`} className="hover:underline font-medium">{e.persona.nombre_mostrado}</Link> como entrenador —{' '}
+                    <LineaPartido p={e.partido} />
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {cumpleanosHoy.length > 0 && (
+              <div className="border rounded-lg px-4 py-3 text-sm">
+                <span className="text-gray-400">🎂 Cumpleaños: </span>
+                {cumpleanosHoy.map((c: any, i: number) => (
+                  <span key={c.slug}>
+                    <Link href={`/${c.esJugador ? 'jugadores' : 'entrenadores'}/${c.slug}`} className="hover:underline">
+                      {c.nombre_mostrado}
+                    </Link>
+                    {i < cumpleanosHoy.length - 1 && ', '}
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* 6. Jugador destacado */}
       {jugadorDestacado && (

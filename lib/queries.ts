@@ -615,13 +615,51 @@ async function getUltimoPartidoHome() {
   };
 }
 
+async function resolverPartidosPorId(ids: number[]) {
+  const out = new Map<number, any>();
+  if (ids.length === 0) return out;
+  const { data } = await supabase
+    .from('partidos')
+    .select('id, slug, fecha, goles_local, goles_visitante, equipo_local_id, equipo_visitante_id, edicion_id')
+    .in('id', ids);
+  const filas = data ?? [];
+  const equipoIds = Array.from(new Set(filas.flatMap((p: any) => [p.equipo_local_id, p.equipo_visitante_id])));
+  const edicionIds = Array.from(new Set(filas.map((p: any) => p.edicion_id).filter(Boolean)));
+  const [{ data: equiposData }, { data: edicionesData }] = await Promise.all([
+    equipoIds.length > 0
+      ? supabase.from('equipos').select('id, nombre_corto').in('id', equipoIds)
+      : Promise.resolve({ data: [] as any[] }),
+    edicionIds.length > 0
+      ? supabase.from('ediciones_competicion').select('id, temporada:temporadas(etiqueta)').in('id', edicionIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
+  const equiposPorId = new Map((equiposData ?? []).map((e: any) => [e.id, e]));
+  const edicionesPorId = new Map((edicionesData ?? []).map((e: any) => [e.id, e]));
+  for (const p of filas) {
+    const cordobaEsLocal = p.equipo_local_id === CORDOBA_ID;
+    const rivalId = cordobaEsLocal ? p.equipo_visitante_id : p.equipo_local_id;
+    out.set(p.id, {
+      slug: p.slug,
+      fecha: p.fecha,
+      rival: equiposPorId.get(rivalId)?.nombre_corto ?? '?',
+      golesCordoba: cordobaEsLocal ? p.goles_local : p.goles_visitante,
+      golesRival: cordobaEsLocal ? p.goles_visitante : p.goles_local,
+      temporada: edicionesPorId.get(p.edicion_id)?.temporada?.etiqueta ?? null,
+    });
+  }
+  return out;
+}
+
 async function getEfemeridesHoy() {
   const hoy = new Date();
   const mmdd = `${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+  const esHoy = (fecha: string) => {
+    const f = new Date(fecha + 'T00:00:00');
+    return `${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}` === mmdd;
+  };
 
-  // Traemos solo columnas ligeras (sin JOINs) para toda la paginación, ya que
-  // los JOINs a equipos/ediciones sobre las ~3000 filas provocaban timeout.
-  // Filtramos por mes/día en JS porque PostgREST no permite comparar solo esa parte de una fecha.
+  // 1) Todos los partidos del Córdoba jugados en este día del calendario (cualquier año),
+  //    sin JOINs en la parte paginada para evitar el timeout que ya tuvimos antes.
   const filas: any[] = [];
   const PAGE = 1000;
   let desde = 0;
@@ -638,45 +676,100 @@ async function getEfemeridesHoy() {
     if (pagina.length < PAGE) break;
     desde += PAGE;
   }
-
-  const coincidencias = filas.filter((p: any) => {
-    const f = new Date(p.fecha + 'T00:00:00');
-    const pmmdd = `${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
-    return pmmdd === mmdd;
-  });
-
+  const coincidencias = filas.filter((p: any) => esHoy(p.fecha));
   coincidencias.sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-  const top3 = coincidencias.slice(0, 3);
-  if (top3.length === 0) return [];
+  // Mapa fecha -> partido: cualquier hito (debut, gol, etc.) de este día del calendario
+  // cayó necesariamente en uno de estos partidos, así que evitamos volver a consultarlo.
+  const fechaAPartido = new Map(coincidencias.map((p: any) => [p.fecha, p]));
 
-  // Solo para las 1-3 coincidencias finales, traemos los datos completos (equipos, temporada).
-  const equipoIds = Array.from(new Set(top3.flatMap((p: any) => [p.equipo_local_id, p.equipo_visitante_id])));
-  const edicionIds = Array.from(new Set(top3.map((p: any) => p.edicion_id).filter(Boolean)));
+  const resultados = coincidencias.slice(0, 3);
+  const idsResultados = resultados.map((p: any) => p.id);
 
-  const [{ data: equiposData }, { data: edicionesData }] = await Promise.all([
-    supabase.from('equipos').select('id, nombre_corto').in('id', equipoIds),
-    edicionIds.length > 0
-      ? supabase.from('ediciones_competicion').select('id, temporada:temporadas(etiqueta)').in('id', edicionIds)
-      : Promise.resolve({ data: [] as any[] }),
+  // 2) Debuts y últimos partidos de hoy, con un mínimo de partidos jugados en la carrera.
+  const UMBRAL_PARTIDOS = 20;
+  const [{ data: debutsData }, { data: ultimosData }] = await Promise.all([
+    supabase.from('v_jugador_debut').select('persona_id, fecha_debut'),
+    supabase.from('v_jugador_ultimo').select('persona_id, fecha_ultimo'),
   ]);
-  const equiposPorId = new Map((equiposData ?? []).map((e: any) => [e.id, e]));
-  const edicionesPorId = new Map((edicionesData ?? []).map((e: any) => [e.id, e]));
+  const debutsHoy = (debutsData ?? []).filter((d: any) => esHoy(d.fecha_debut));
+  const ultimosHoy = (ultimosData ?? []).filter((d: any) => esHoy(d.fecha_ultimo));
 
-  return top3.map((p: any) => {
-    const cordobaEsLocal = p.equipo_local_id === CORDOBA_ID;
-    const rivalId = cordobaEsLocal ? p.equipo_visitante_id : p.equipo_local_id;
-    const rival = equiposPorId.get(rivalId);
-    const golesCordoba = cordobaEsLocal ? p.goles_local : p.goles_visitante;
-    const golesRival = cordobaEsLocal ? p.goles_visitante : p.goles_local;
-    return {
-      slug: p.slug,
-      fecha: p.fecha,
-      rival: rival?.nombre_corto ?? '?',
-      golesCordoba,
-      golesRival,
-      temporada: edicionesPorId.get(p.edicion_id)?.temporada?.etiqueta ?? null,
-    };
-  });
+  const idsUmbral = Array.from(new Set([...debutsHoy, ...ultimosHoy].map((d: any) => d.persona_id)));
+  const { data: partidosCountData } =
+    idsUmbral.length > 0
+      ? await supabase.from('v_jugador_partidos').select('persona_id, partidos').in('persona_id', idsUmbral)
+      : { data: [] as any[] };
+  const partidosPorPersona = new Map((partidosCountData ?? []).map((p: any) => [p.persona_id, p.partidos]));
+
+  const debuts = debutsHoy.filter((d: any) => (partidosPorPersona.get(d.persona_id) ?? 0) >= UMBRAL_PARTIDOS);
+  const ultimos = ultimosHoy.filter((d: any) => (partidosPorPersona.get(d.persona_id) ?? 0) >= UMBRAL_PARTIDOS);
+
+  // 3) Primer gol y goles de hito (cada 50) marcados hoy.
+  const hitosGol = [50, 100, 150, 200, 250, 300];
+  const [{ data: primerGolData }, { data: hitoGolData }] = await Promise.all([
+    supabase.from('v_gol_numero').select('persona_id, numero, fecha').eq('numero', 1),
+    supabase.from('v_gol_numero').select('persona_id, numero, fecha').in('numero', hitosGol),
+  ]);
+  const primerGolHoy = (primerGolData ?? []).filter((g: any) => esHoy(g.fecha));
+  const hitoGolHoy = (hitoGolData ?? []).filter((g: any) => esHoy(g.fecha));
+
+  // 4) Debut y partidos de hito (cada 50) de entrenadores.
+  const [{ data: debutEntData }, { data: hitoEntData }] = await Promise.all([
+    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').eq('numero', 1),
+    supabase.from('v_entrenador_partido_numero').select('persona_id, numero, fecha').in('numero', hitosGol),
+  ]);
+  const debutEntHoy = (debutEntData ?? []).filter((e: any) => esHoy(e.fecha));
+  const hitoEntHoy = (hitoEntData ?? []).filter((e: any) => esHoy(e.fecha));
+
+  // Resolvemos nombres de persona para todos los implicados en un único viaje.
+  const idsPersonas = Array.from(
+    new Set(
+      [...debuts, ...ultimos, ...primerGolHoy, ...hitoGolHoy, ...debutEntHoy, ...hitoEntHoy].map((x: any) => x.persona_id)
+    )
+  );
+  const { data: personasData } =
+    idsPersonas.length > 0
+      ? await supabase.from('personas').select('id, nombre_mostrado, slug').in('id', idsPersonas)
+      : { data: [] as any[] };
+  const personasPorId = new Map((personasData ?? []).map((p: any) => [p.id, p]));
+
+  // Los partidos de goles/entrenadores no tienen id de partido en la vista, pero su fecha
+  // sí está entre los partidos de hoy que ya tenemos resueltos en `fechaAPartido`.
+  const idsPartidosExtra = [
+    ...debuts.map((d: any) => fechaAPartido.get(d.fecha_debut)?.id),
+    ...ultimos.map((d: any) => fechaAPartido.get(d.fecha_ultimo)?.id),
+  ].filter(Boolean) as number[];
+
+  const partidosPorId = await resolverPartidosPorId(Array.from(new Set([...idsResultados, ...idsPartidosExtra])));
+
+  function partidoParaFecha(fecha: string) {
+    const p = fechaAPartido.get(fecha);
+    return p ? partidosPorId.get(p.id) ?? null : null;
+  }
+
+  return {
+    resultados: resultados.map((p: any) => partidosPorId.get(p.id)),
+    debuts: debuts
+      .map((d: any) => ({ persona: personasPorId.get(d.persona_id), partido: partidoParaFecha(d.fecha_debut) }))
+      .filter((d: any) => d.persona && d.partido)
+      .slice(0, 5),
+    ultimos: ultimos
+      .map((d: any) => ({ persona: personasPorId.get(d.persona_id), partido: partidoParaFecha(d.fecha_ultimo) }))
+      .filter((d: any) => d.persona && d.partido)
+      .slice(0, 5),
+    golesHito: [...primerGolHoy, ...hitoGolHoy]
+      .map((g: any) => ({ persona: personasPorId.get(g.persona_id), numero: g.numero, partido: partidoParaFecha(g.fecha) }))
+      .filter((g: any) => g.persona && g.partido)
+      .slice(0, 5),
+    entrenadorDebut: debutEntHoy
+      .map((e: any) => ({ persona: personasPorId.get(e.persona_id), partido: partidoParaFecha(e.fecha) }))
+      .filter((e: any) => e.persona && e.partido)
+      .slice(0, 5),
+    entrenadorHito: hitoEntHoy
+      .map((e: any) => ({ persona: personasPorId.get(e.persona_id), numero: e.numero, partido: partidoParaFecha(e.fecha) }))
+      .filter((e: any) => e.persona && e.partido)
+      .slice(0, 5),
+  };
 }
 
 async function getJugadorDestacadoHome() {
