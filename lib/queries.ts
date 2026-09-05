@@ -583,18 +583,28 @@ async function getEfemeridesHoy() {
 
   // Traemos un rango amplio de años y filtramos en JS por mes/día exactos,
   // ya que PostgREST no permite comparar solo la parte MM-DD de una fecha directamente.
-  const { data } = await supabase
-    .from('partidos')
-    .select(
-      `id, fecha, slug, goles_local, goles_visitante,
-       equipo_local:equipos!partidos_equipo_local_id_fkey(id, nombre_corto, escudo_url),
-       equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(id, nombre_corto, escudo_url),
-       edicion:ediciones_competicion(temporada:temporadas(etiqueta))`
-    )
-    .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
-    .not('goles_local', 'is', null);
+  const filas: any[] = [];
+  const PAGE = 1000;
+  let desde = 0;
+  while (true) {
+    const { data: pagina } = await supabase
+      .from('partidos')
+      .select(
+        `id, fecha, slug, goles_local, goles_visitante,
+         equipo_local:equipos!partidos_equipo_local_id_fkey(id, nombre_corto, escudo_url),
+         equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(id, nombre_corto, escudo_url),
+         edicion:ediciones_competicion(temporada:temporadas(etiqueta))`
+      )
+      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
+      .not('goles_local', 'is', null)
+      .range(desde, desde + PAGE - 1);
+    if (!pagina || pagina.length === 0) break;
+    filas.push(...pagina);
+    if (pagina.length < PAGE) break;
+    desde += PAGE;
+  }
 
-  const coincidencias = (data ?? []).filter((p: any) => {
+  const coincidencias = filas.filter((p: any) => {
     const f = new Date(p.fecha + 'T00:00:00');
     const pmmdd = `${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
     return pmmdd === mmdd;
@@ -728,14 +738,25 @@ async function getTemporadaDestacadaHome() {
 }
 
 async function getRivalesTopHome(limite = 5) {
-  const { data: partidos } = await supabase
-    .from('partidos')
-    .select(
-      `goles_local, goles_visitante,
-       equipo_local:equipos!partidos_equipo_local_id_fkey(id, nombre_corto, slug, escudo_url),
-       equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(id, nombre_corto, slug, escudo_url)`
-    )
-    .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`);
+  const filas: any[] = [];
+  const PAGE = 1000;
+  let desde = 0;
+  while (true) {
+    const { data: pagina } = await supabase
+      .from('partidos')
+      .select(
+        `goles_local, goles_visitante,
+         equipo_local:equipos!partidos_equipo_local_id_fkey(id, nombre_corto, slug, escudo_url),
+         equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(id, nombre_corto, slug, escudo_url)`
+      )
+      .or(`equipo_local_id.eq.${CORDOBA_ID},equipo_visitante_id.eq.${CORDOBA_ID}`)
+      .range(desde, desde + PAGE - 1);
+    if (!pagina || pagina.length === 0) break;
+    filas.push(...pagina);
+    if (pagina.length < PAGE) break;
+    desde += PAGE;
+  }
+  const partidos = filas;
 
   type Fila = { id: number; nombre: string; slug: string | null; escudo: string | null; pj: number; v: number; e: number; d: number };
   const porRival = new Map<number, Fila>();
