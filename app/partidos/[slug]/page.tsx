@@ -120,8 +120,12 @@ export default async function PartidoPage({ params }: { params: { slug: string }
     return (
       <span className="inline-flex items-center gap-0.5 ml-1">
         {gs.map((g, i) => (
-          <span key={`g${i}`} title={`Gol ${minutoTexto(g)}`}>
-            ⚽
+          <span key={`g${i}`} title={g.tipo === 'AUTOGOL' ? `Gol en propia meta ${minutoTexto(g)}` : `Gol ${minutoTexto(g)}`}>
+            {g.tipo === 'AUTOGOL' ? (
+              <span className="text-red-600 font-semibold text-xs">⚽ p.p.</span>
+            ) : (
+              '⚽'
+            )}
           </span>
         ))}
         {ts.map((t, i) => (
@@ -145,6 +149,7 @@ export default async function PartidoPage({ params }: { params: { slug: string }
 
   for (const g of goles as any[]) {
     const equipoGolLocal = g.equipo_beneficiario_id === local.id;
+    const esAutogol = g.tipo === 'AUTOGOL';
     eventos.push({
       minuto: g.minuto,
       minutoExtra: g.minuto_extra,
@@ -153,7 +158,8 @@ export default async function PartidoPage({ params }: { params: { slug: string }
       contenido: (
         <>
           <NombrePersona persona={g.autor} esCordoba={(equipoGolLocal ? local : visitante).es_cordoba} />
-          {g.tipo && g.tipo !== 'NORMAL' ? ` (${g.tipo.toLowerCase().replace('_', ' ')})` : ''}
+          {esAutogol && <span className="text-red-600 font-semibold"> (p.p.)</span>}
+          {!esAutogol && g.tipo && g.tipo !== 'NORMAL' ? ` (${g.tipo.toLowerCase().replace('_', ' ')})` : ''}
         </>
       ),
     });
@@ -291,6 +297,7 @@ export default async function PartidoPage({ params }: { params: { slug: string }
               {golesLocal.map((g: any, i: number) => (
                 <div key={i}>
                   ⚽ {g.autor?.nombre_mostrado ?? '?'} {minutoTexto(g)}
+                  {g.tipo === 'AUTOGOL' && <span className="text-red-600 font-semibold"> (p.p.)</span>}
                 </div>
               ))}
             </div>
@@ -298,6 +305,7 @@ export default async function PartidoPage({ params }: { params: { slug: string }
               {golesVisitante.map((g: any, i: number) => (
                 <div key={i}>
                   ⚽ {g.autor?.nombre_mostrado ?? '?'} {minutoTexto(g)}
+                  {g.tipo === 'AUTOGOL' && <span className="text-red-600 font-semibold"> (p.p.)</span>}
                 </div>
               ))}
             </div>
