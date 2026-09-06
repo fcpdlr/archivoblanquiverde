@@ -103,7 +103,8 @@ export async function getJugadorBySlug(slug: string) {
          equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(id, nombre_corto),
          edicion:ediciones_competicion(temporada:temporadas(etiqueta), competicion:competiciones(nombre_actual)))`
     )
-    .eq('autor_id', persona.id);
+    .eq('autor_id', persona.id)
+    .eq('equipo_beneficiario_id', CORDOBA_ID);
 
   const { data: tarjetas } = await supabase
     .from('tarjetas')
