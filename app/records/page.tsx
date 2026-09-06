@@ -18,7 +18,7 @@ function fechaCorta(fecha: string) {
 }
 
 export default async function RecordsPage() {
-  const { mayoresVictorias, mayoresDerrotas, rachas, resultadosOrdenados, totalResultadosDistintos, scorigami, meses, masJovenes, masVeteranos } =
+  const { mayoresVictorias, mayoresDerrotas, rachas, resultadosOrdenados, totalResultadosDistintos, scorigami, meses, masJovenes, masVeteranos, hattricks } =
     await getRecordsData();
 
   const maxPj = Math.max(...meses.map((m: any) => m.pj), 1);
@@ -264,6 +264,32 @@ export default async function RecordsPage() {
               ))}
             </ol>
           </div>
+        </div>
+      </section>
+
+      {/* Hat-tricks */}
+      <section>
+        <h2 className="font-serif font-bold text-xl text-blanquiverde-verde mb-1">Hat-tricks (3 o más goles en un partido)</h2>
+        <p className="text-sm text-gray-500 mb-4">{hattricks.length} veces en la historia del club.</p>
+        <div className="border rounded-lg divide-y">
+          {hattricks.map((h: any, i: number) => (
+            <Link
+              key={`${h.partido.slug}-${h.persona.slug}`}
+              href={`/partidos/${h.partido.slug}`}
+              className="flex items-center justify-between px-4 py-3 text-sm hover:bg-blanquiverde-verde/10 odd:bg-white even:bg-blanquiverde-verde/5"
+            >
+              <span className="text-gray-400 w-5">{i + 1}</span>
+              <span className="flex-1">
+                <span className="font-medium hover:underline">{h.persona.nombre_mostrado}</span>
+                <span className="text-gray-500">
+                  {' '}
+                  — Córdoba {h.partido.golesCordoba}-{h.partido.golesRival} {h.partido.rival}
+                  {h.partido.temporada && <span className="text-gray-400"> ({h.partido.temporada})</span>}
+                </span>
+              </span>
+              <span className="font-semibold text-blanquiverde-verde">{h.goles} goles</span>
+            </Link>
+          ))}
         </div>
       </section>
     </div>

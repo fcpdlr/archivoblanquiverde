@@ -1490,6 +1490,30 @@ export async function getRecordsData() {
     .sort((a, b) => b.edadAnios - a.edadAnios || b.edadDiasResto - a.edadDiasResto)
     .slice(0, 5);
 
+  // Hat-tricks (3 o más goles en un mismo partido).
+  const { data: hattricksData } = await supabase
+    .from('v_hattricks')
+    .select('persona_id, partido_id, fecha, goles')
+    .order('goles', { ascending: false })
+    .order('fecha', { ascending: false });
+  const filasHattricks = hattricksData ?? [];
+  const idsPersonasHT = Array.from(new Set(filasHattricks.map((h: any) => h.persona_id)));
+  const idsPartidosHT = Array.from(new Set(filasHattricks.map((h: any) => h.partido_id)));
+  const [{ data: personasHTData }, partidosHTPorId] = await Promise.all([
+    idsPersonasHT.length > 0
+      ? supabase.from('personas').select('id, nombre_mostrado, slug').in('id', idsPersonasHT)
+      : Promise.resolve({ data: [] as any[] }),
+    resolverPartidosPorId(idsPartidosHT),
+  ]);
+  const personasHTPorId = new Map((personasHTData ?? []).map((p: any) => [p.id, p]));
+  const hattricks = filasHattricks
+    .map((h: any) => ({
+      persona: personasHTPorId.get(h.persona_id),
+      goles: h.goles,
+      partido: partidosHTPorId.get(h.partido_id),
+    }))
+    .filter((h: any) => h.persona && h.partido);
+
   return {
     mayoresVictorias,
     mayoresDerrotas,
@@ -1500,5 +1524,6 @@ export async function getRecordsData() {
     meses,
     masJovenes,
     masVeteranos,
+    hattricks,
   };
 }

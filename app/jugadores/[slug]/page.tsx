@@ -48,6 +48,19 @@ export default async function JugadorPage({ params }: { params: { slug: string }
 
   const jugados = convocatorias.filter((c: any) => c.jugo && c.partido);
 
+  // Hat-tricks: agrupamos los goles ya cargados por partido (sin consulta extra).
+  const golesPorPartido = new Map<string, { count: number; partido: any }>();
+  for (const g of goles as any[]) {
+    if (!g.partido) continue;
+    const actual = golesPorPartido.get(g.partido.slug) ?? { count: 0, partido: g.partido };
+    actual.count += 1;
+    golesPorPartido.set(g.partido.slug, actual);
+  }
+  const hattricks = Array.from(golesPorPartido.values())
+    .filter((h) => h.count >= 3)
+    .sort((a, b) => b.count - a.count || new Date(b.partido.fecha).getTime() - new Date(a.partido.fecha).getTime());
+
+
   // --- Agrupación temporada -> competición (para la tabla de temporadas) ---
   type Comp = { competicion: string; pj: number; titular: number; goles: number; tarjetas: number };
   type Temp = { temporada: string; anioInicio: number; comps: Map<string, Comp>; dorsal: number | null; ultimaFechaDorsal: string | null };
@@ -299,6 +312,23 @@ export default async function JugadorPage({ params }: { params: { slug: string }
         </div>
         <p className="text-xs text-gray-400 text-center mt-3 font-serif">Los datos pueden estar sujetos a revisión.</p>
       </div>
+
+      {/* Hat-tricks */}
+      {hattricks.length > 0 && (
+        <div className="border border-blanquiverde-verde/40 rounded-lg p-6 mb-8 bg-blanquiverde-verde/5">
+          <h2 className="font-serif font-bold text-lg text-blanquiverde-verde mb-3">
+            🎩 {hattricks.length === 1 ? 'Hat-trick' : `${hattricks.length} hat-tricks`}
+          </h2>
+          <ul className="space-y-2 text-sm">
+            {hattricks.map((h) => (
+              <li key={h.partido.slug} className="flex items-center justify-between gap-3">
+                <ResultadoPartido c={{ partido: h.partido }} />
+                <span className="text-gray-400 whitespace-nowrap">{h.count} goles</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Goles — lista completa desplegable */}
       {golesOrdenados.length > 0 && (
