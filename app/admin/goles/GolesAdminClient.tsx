@@ -20,6 +20,7 @@ type Gol = {
   confianza: string | null;
   fuente_video_url: string | null;
   notas: string | null;
+  contacto_marco: string | null;
   autor: { id: number; nombre_mostrado: string; slug: string } | null;
   partido: {
     id: number;
@@ -55,6 +56,7 @@ const TIPOS_REMATE = [
   { v: 'CONDUCCION', l: 'Conducción' },
   { v: 'VOLEA', l: 'Volea' },
   { v: 'MEDIA_VOLEA', l: 'Media volea' },
+  { v: 'CHILENA', l: 'Chilena' },
   { v: 'VASELINA', l: 'Vaselina' },
   { v: 'CABEZAZO', l: 'Cabezazo' },
 ];
@@ -63,6 +65,30 @@ const CONFIANZAS = [
   { v: 'APROXIMADA', l: 'Aproximada' },
   { v: 'PARCIAL', l: 'Parcial' },
 ];
+const CONTACTOS_MARCO = [
+  { v: 'NINGUNO', l: 'Ninguno' },
+  { v: 'POSTE', l: 'Poste' },
+  { v: 'LARGUERO', l: 'Larguero' },
+];
+
+// Punto de penalti y "D" de referencia, calculados una vez con la geometría
+// del área (borde exterior en x=83, línea de meta en x=99, radio ~9 unidades
+// igual que el círculo central). offsetX permite reutilizar el dibujo tanto
+// en el campo completo como en el recorte de zoom, que solo desplaza el origen.
+function AreaReferencias({ offsetX = 0 }: { offsetX?: number }) {
+  const penaltyX = 88.3 - offsetX;
+  const cy = 32;
+  const r = 9;
+  const edgeX = 83 - offsetX;
+  const dx = penaltyX - edgeX;
+  const dy = Math.sqrt(Math.max(r * r - dx * dx, 0));
+  return (
+    <g stroke="#B9CABE" strokeWidth="0.4" fill="none">
+      <circle cx={penaltyX} cy={cy} r="0.6" fill="#B9CABE" stroke="none" />
+      <path d={`M ${edgeX} ${cy - dy} A ${r} ${r} 0 0 1 ${edgeX} ${cy + dy}`} />
+    </g>
+  );
+}
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
@@ -93,6 +119,7 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
   const [tipoJugada, setTipoJugada] = useState<string | null>(null);
   const [tipoRemate, setTipoRemate] = useState<string | null>(null);
   const [confianza, setConfianza] = useState<string | null>(null);
+  const [contactoMarco, setContactoMarco] = useState<string | null>(null);
   const [fuenteVideo, setFuenteVideo] = useState('');
   const [notas, setNotas] = useState('');
   const [asistenteQuery, setAsistenteQuery] = useState('');
@@ -102,7 +129,9 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
   const [mensaje, setMensaje] = useState<string | null>(null);
 
   const pitchRef = useRef<SVGSVGElement>(null);
+  const zoomRef = useRef<SVGSVGElement>(null);
   const goalRef = useRef<SVGSVGElement>(null);
+  const ZOOM_MIN_X = 75; // último cuarto de campo, donde se marca la mayoría de goles
 
   function limpiarCampos() {
     setShot(null);
@@ -111,6 +140,7 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
     setTipoJugada(null);
     setTipoRemate(null);
     setConfianza(null);
+    setContactoMarco(null);
     setFuenteVideo('');
     setNotas('');
     setAsistenteQuery('');
@@ -123,6 +153,15 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
     if (!svg) return;
     const p = svgPoint(svg, e.clientX, e.clientY);
     const x = clamp(p.x, 0, 100);
+    const y = clamp(p.y, 0, 64);
+    setShot({ x, y: (y / 64) * 100 });
+  }
+
+  function handleZoomPointer(e: React.PointerEvent<SVGSVGElement>) {
+    const svg = zoomRef.current;
+    if (!svg) return;
+    const p = svgPoint(svg, e.clientX, e.clientY);
+    const x = clamp(ZOOM_MIN_X + p.x, 0, 100);
     const y = clamp(p.y, 0, 64);
     setShot({ x, y: (y / 64) * 100 });
   }
@@ -164,6 +203,7 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
       p_confianza: confianza,
       p_fuente_video_url: fuenteVideo || null,
       p_notas: notas || null,
+      p_contacto_marco: contactoMarco,
     });
     setGuardando(false);
     if (error) {
@@ -269,10 +309,33 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
             <circle cx="50" cy="32" r="9" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
             <rect x="1" y="14" width="16" height="36" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
             <rect x="83" y="14" width="16" height="36" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
+            <AreaReferencias />
+            {/* Marco visual del recorte de zoom (último cuarto) */}
+            <rect x={ZOOM_MIN_X} y="1" width={99 - ZOOM_MIN_X} height="62" fill="none" stroke="#A9813C" strokeWidth="0.5" strokeDasharray="1.5,1" />
             <text x="4" y="60" fontSize="3" fill="#8B958C">
               Córdoba ataca →
             </text>
             {shot && <circle cx={shot.x} cy={(shot.y / 100) * 64} r="1.8" fill="#A9813C" stroke="#fff" strokeWidth="0.5" />}
+          </svg>
+
+          <div className="flex items-center justify-between mb-1 mt-4">
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Zoom último cuarto <span className="normal-case text-gray-400 font-normal">arrastra para precisar</span>
+            </label>
+          </div>
+          <svg
+            ref={zoomRef}
+            viewBox={`0 0 ${100 - ZOOM_MIN_X} 64`}
+            className="w-full bg-blanquiverde-verde/5 border border-[#A9813C]/50 rounded cursor-crosshair touch-none"
+            onPointerDown={handleZoomPointer}
+            onPointerMove={(e) => e.buttons === 1 && handleZoomPointer(e)}
+          >
+            <rect x="-1" y="1" width={100 - ZOOM_MIN_X + 1} height="62" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
+            <rect x={83 - ZOOM_MIN_X} y="14" width="16" height="36" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
+            <AreaReferencias offsetX={ZOOM_MIN_X} />
+            {shot && (
+              <circle cx={shot.x - ZOOM_MIN_X} cy={(shot.y / 100) * 64} r="2.4" fill="#A9813C" stroke="#fff" strokeWidth="0.6" />
+            )}
           </svg>
 
           <div className="flex items-center justify-between mb-1 mt-5">
@@ -353,6 +416,10 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Confianza del análisis</label>
             <BtnGroup opciones={CONFIANZAS} valor={confianza} onChange={setConfianza} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">¿Pegó en palo o larguero?</label>
+            <BtnGroup opciones={CONTACTOS_MARCO} valor={contactoMarco} onChange={setContactoMarco} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Fuente de vídeo (URL)</label>

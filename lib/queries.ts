@@ -1533,7 +1533,7 @@ export async function getGolesPendientesAdmin(limit = 30) {
     .from('goles')
     .select(
       `id, minuto, minuto_extra, tipo, asistente_id, shot_x, shot_y, goal_x, goal_y,
-       parte_cuerpo, tipo_jugada, tipo_remate, confianza, fuente_video_url, notas,
+       parte_cuerpo, tipo_jugada, tipo_remate, confianza, fuente_video_url, notas, contacto_marco,
        autor:personas!goles_autor_id_fkey(id, nombre_mostrado, slug),
        partido:partidos!goles_partido_id_fkey(
          id, slug, fecha, goles_local, goles_visitante, equipo_local_id, equipo_visitante_id,
