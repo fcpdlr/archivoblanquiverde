@@ -8,6 +8,8 @@ type Gol = {
   id: number;
   minuto: number;
   minuto_extra: number | null;
+  segundo: number | null;
+  segundo_extra: number | null;
   tipo: string;
   asistente_id: number | null;
   shot_x: number | null;
@@ -108,6 +110,45 @@ function fechaCorta(fecha: string) {
   return new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Acepta "2:34" (minuto:segundo en tiempo normal) o "45:00+75" / "90:00+75"
+// (base de descuento + segundos totales transcurridos en el descuento).
+// Devuelve null si el texto no tiene un formato reconocible.
+function parseMinutoExacto(texto: string): {
+  minuto: number;
+  minuto_extra: number | null;
+  segundo: number | null;
+  segundo_extra: number | null;
+} | null {
+  const t = texto.trim();
+  const conDescuento = t.match(/^(\d+):00\+(\d+)$/);
+  if (conDescuento) {
+    const base = parseInt(conDescuento[1], 10);
+    const totalSegundos = parseInt(conDescuento[2], 10);
+    return {
+      minuto: base,
+      minuto_extra: Math.floor(totalSegundos / 60) + 1,
+      segundo: null,
+      segundo_extra: totalSegundos % 60,
+    };
+  }
+  const normal = t.match(/^(\d+):([0-5]\d)$/);
+  if (normal) {
+    return { minuto: parseInt(normal[1], 10), minuto_extra: null, segundo: parseInt(normal[2], 10), segundo_extra: null };
+  }
+  return null;
+}
+
+function formatMinutoExacto(gol: Gol): string {
+  if (gol.minuto_extra != null) {
+    const totalSegundos = (gol.minuto_extra - 1) * 60 + (gol.segundo_extra ?? 0);
+    return `${gol.minuto}:00+${totalSegundos}`;
+  }
+  if (gol.segundo != null) {
+    return `${gol.minuto}:${String(gol.segundo).padStart(2, '0')}`;
+  }
+  return '';
+}
+
 export default function GolesAdminClient({ golesIniciales }: { golesIniciales: Gol[] }) {
   const [cola, setCola] = useState(golesIniciales);
   const [idx, setIdx] = useState(0);
@@ -120,6 +161,8 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
   const [tipoRemate, setTipoRemate] = useState<string | null>(null);
   const [confianza, setConfianza] = useState<string | null>(null);
   const [contactoMarco, setContactoMarco] = useState<string | null>(null);
+  const [minutoTexto, setMinutoTexto] = useState('');
+  const [minutoError, setMinutoError] = useState<string | null>(null);
   const [fuenteVideo, setFuenteVideo] = useState('');
   const [notas, setNotas] = useState('');
   const [asistenteQuery, setAsistenteQuery] = useState('');
@@ -140,6 +183,8 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
     setTipoRemate(null);
     setConfianza(null);
     setContactoMarco(null);
+    setMinutoTexto('');
+    setMinutoError(null);
     setFuenteVideo('');
     setNotas('');
     setAsistenteQuery('');
@@ -182,6 +227,15 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
 
   async function guardarYSiguiente() {
     if (!gol) return;
+    let minutoParseado: ReturnType<typeof parseMinutoExacto> = null;
+    if (minutoTexto.trim()) {
+      minutoParseado = parseMinutoExacto(minutoTexto);
+      if (!minutoParseado) {
+        setMinutoError('Formato no reconocido. Usa "2:34" o "45:00+75".');
+        return;
+      }
+    }
+    setMinutoError(null);
     setGuardando(true);
     setMensaje(null);
     const { error } = await supabase.rpc('admin_actualizar_gol', {
@@ -198,6 +252,10 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
       p_fuente_video_url: fuenteVideo || null,
       p_notas: notas || null,
       p_contacto_marco: contactoMarco,
+      p_minuto: minutoParseado?.minuto ?? null,
+      p_minuto_extra: minutoParseado?.minuto_extra ?? null,
+      p_segundo: minutoParseado?.segundo ?? null,
+      p_segundo_extra: minutoParseado?.segundo_extra ?? null,
     });
     setGuardando(false);
     if (error) {
@@ -282,6 +340,25 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
           </div>
         </div>
       )}
+
+      <div className="mb-6">
+        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+          Minuto exacto <span className="font-normal text-gray-400">(opcional, según el vídeo)</span>
+        </label>
+        <input
+          type="text"
+          value={minutoTexto}
+          onChange={(e) => {
+            setMinutoTexto(e.target.value);
+            setMinutoError(null);
+          }}
+          placeholder='p. ej. "2:34" o "45:00+75" (descuento)'
+          className={`w-full max-w-xs border rounded px-3 py-2 text-sm font-mono focus:outline-none ${
+            minutoError ? 'border-red-400' : 'border-gray-300 focus:border-blanquiverde-verde'
+          }`}
+        />
+        {minutoError && <p className="text-xs text-red-500 mt-1">{minutoError}</p>}
+      </div>
 
       <div className="grid md:grid-cols-2 gap-8">
         <div>
