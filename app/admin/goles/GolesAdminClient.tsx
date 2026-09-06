@@ -110,38 +110,37 @@ function fechaCorta(fecha: string) {
   return new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// Acepta "2:34" (minuto:segundo en tiempo normal) o "45:00+75" / "90:00+75"
-// (base de descuento + segundos totales transcurridos en el descuento).
-// Devuelve null si el texto no tiene un formato reconocible.
-function parseMinutoExacto(texto: string): {
+// Marcador de tiempo continuo, tal cual se lee en el vídeo: "46:17", "94:54"...
+// Si es descuento, se interpreta contra el último límite de reglamento (45, 90,
+// 105 o 120) inmediatamente anterior, así nunca se confunde el descuento de una
+// parte con los primeros minutos de la siguiente. Devuelve null si no es válido.
+const LIMITES_REGLAMENTO = [45, 90, 105, 120];
+
+function parseMinutoExacto(
+  texto: string,
+  esDescuento: boolean
+): {
   minuto: number;
   minuto_extra: number | null;
   segundo: number | null;
   segundo_extra: number | null;
 } | null {
-  const t = texto.trim();
-  const conDescuento = t.match(/^(\d+):00\+(\d+)$/);
-  if (conDescuento) {
-    const base = parseInt(conDescuento[1], 10);
-    const totalSegundos = parseInt(conDescuento[2], 10);
-    return {
-      minuto: base,
-      minuto_extra: Math.floor(totalSegundos / 60) + 1,
-      segundo: null,
-      segundo_extra: totalSegundos % 60,
-    };
+  const m = texto.trim().match(/^(\d+):([0-5]\d)$/);
+  if (!m) return null;
+  const mm = parseInt(m[1], 10);
+  const ss = parseInt(m[2], 10);
+
+  if (!esDescuento) {
+    return { minuto: mm, minuto_extra: null, segundo: ss, segundo_extra: null };
   }
-  const normal = t.match(/^(\d+):([0-5]\d)$/);
-  if (normal) {
-    return { minuto: parseInt(normal[1], 10), minuto_extra: null, segundo: parseInt(normal[2], 10), segundo_extra: null };
-  }
-  return null;
+  const base = [...LIMITES_REGLAMENTO].reverse().find((l) => l < mm);
+  if (base == null) return null; // p.ej. marcar "descuento" con un minuto ≤ 45 no tiene sentido
+  return { minuto: base, minuto_extra: mm - base, segundo: null, segundo_extra: ss };
 }
 
 function formatMinutoExacto(gol: Gol): string {
   if (gol.minuto_extra != null) {
-    const totalSegundos = (gol.minuto_extra - 1) * 60 + (gol.segundo_extra ?? 0);
-    return `${gol.minuto}:00+${totalSegundos}`;
+    return `${gol.minuto + gol.minuto_extra}:${String(gol.segundo_extra ?? 0).padStart(2, '0')}`;
   }
   if (gol.segundo != null) {
     return `${gol.minuto}:${String(gol.segundo).padStart(2, '0')}`;
@@ -162,6 +161,7 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
   const [confianza, setConfianza] = useState<string | null>(null);
   const [contactoMarco, setContactoMarco] = useState<string | null>(null);
   const [minutoTexto, setMinutoTexto] = useState('');
+  const [esDescuento, setEsDescuento] = useState(false);
   const [minutoError, setMinutoError] = useState<string | null>(null);
   const [fuenteVideo, setFuenteVideo] = useState('');
   const [notas, setNotas] = useState('');
@@ -184,6 +184,7 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
     setConfianza(null);
     setContactoMarco(null);
     setMinutoTexto('');
+    setEsDescuento(false);
     setMinutoError(null);
     setFuenteVideo('');
     setNotas('');
@@ -229,9 +230,13 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
     if (!gol) return;
     let minutoParseado: ReturnType<typeof parseMinutoExacto> = null;
     if (minutoTexto.trim()) {
-      minutoParseado = parseMinutoExacto(minutoTexto);
+      minutoParseado = parseMinutoExacto(minutoTexto, esDescuento);
       if (!minutoParseado) {
-        setMinutoError('Formato no reconocido. Usa "2:34" o "45:00+75".');
+        setMinutoError(
+          esDescuento
+            ? 'Formato no reconocido, o el minuto marcado no es posterior a ningún límite de reglamento (45/90/105/120).'
+            : 'Formato no reconocido. Usa "46:17".'
+        );
         return;
       }
     }
@@ -345,18 +350,24 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
         <label className="block text-xs font-semibold text-gray-700 mb-1.5">
           Minuto exacto <span className="font-normal text-gray-400">(opcional, según el vídeo)</span>
         </label>
-        <input
-          type="text"
-          value={minutoTexto}
-          onChange={(e) => {
-            setMinutoTexto(e.target.value);
-            setMinutoError(null);
-          }}
-          placeholder='p. ej. "2:34" o "45:00+75" (descuento)'
-          className={`w-full max-w-xs border rounded px-3 py-2 text-sm font-mono focus:outline-none ${
-            minutoError ? 'border-red-400' : 'border-gray-300 focus:border-blanquiverde-verde'
-          }`}
-        />
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={minutoTexto}
+            onChange={(e) => {
+              setMinutoTexto(e.target.value);
+              setMinutoError(null);
+            }}
+            placeholder='p. ej. "46:17"'
+            className={`w-32 border rounded px-3 py-2 text-sm font-mono focus:outline-none ${
+              minutoError ? 'border-red-400' : 'border-gray-300 focus:border-blanquiverde-verde'
+            }`}
+          />
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none">
+            <input type="checkbox" checked={esDescuento} onChange={(e) => setEsDescuento(e.target.checked)} />
+            Es descuento
+          </label>
+        </div>
         {minutoError && <p className="text-xs text-red-500 mt-1">{minutoError}</p>}
       </div>
 
