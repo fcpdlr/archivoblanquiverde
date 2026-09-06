@@ -172,7 +172,11 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
       setSugerencias([]);
       return;
     }
-    const { data } = await supabase.from('personas').select('id, nombre_mostrado').ilike('nombre_mostrado', `%${q}%`).limit(8);
+    const { data } = await supabase
+      .from('v_jugadores_cordoba')
+      .select('id, nombre_mostrado')
+      .ilike('nombre_mostrado', `%${q}%`)
+      .limit(8);
     setSugerencias(data ?? []);
   }
 
