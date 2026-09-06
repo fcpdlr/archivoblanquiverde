@@ -1527,3 +1527,33 @@ export async function getRecordsData() {
     hattricks,
   };
 }
+
+export async function getGolesPendientesAdmin(limit = 30) {
+  const { data } = await supabase
+    .from('goles')
+    .select(
+      `id, minuto, minuto_extra, tipo, asistente_id, shot_x, shot_y, goal_x, goal_y,
+       parte_cuerpo, tipo_jugada, tipo_remate, confianza, fuente_video_url, notas,
+       autor:personas!goles_autor_id_fkey(id, nombre_mostrado, slug),
+       partido:partidos!goles_partido_id_fkey(
+         id, slug, fecha, goles_local, goles_visitante, equipo_local_id, equipo_visitante_id,
+         equipo_local:equipos!partidos_equipo_local_id_fkey(nombre_corto),
+         equipo_visitante:equipos!partidos_equipo_visitante_id_fkey(nombre_corto)
+       )`
+    )
+    .eq('equipo_beneficiario_id', CORDOBA_ID)
+    .is('shot_x', null)
+    .order('partido_id', { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function buscarPersonasAdmin(query: string) {
+  if (!query || query.length < 2) return [];
+  const { data } = await supabase
+    .from('personas')
+    .select('id, nombre_mostrado, slug')
+    .ilike('nombre_mostrado', `%${query}%`)
+    .limit(10);
+  return data ?? [];
+}
