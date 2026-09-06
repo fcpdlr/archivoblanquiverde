@@ -71,10 +71,10 @@ const CONTACTOS_MARCO = [
   { v: 'LARGUERO', l: 'Larguero' },
 ];
 
-// Punto de penalti y "D" de referencia, calculados una vez con la geometría
-// del área (borde exterior en x=83, línea de meta en x=99, radio ~9 unidades
-// igual que el círculo central). offsetX permite reutilizar el dibujo tanto
-// en el campo completo como en el recorte de zoom, que solo desplaza el origen.
+// Punto de penalti y "D" de referencia, calculados con la geometría real del
+// área (borde exterior en x=83, línea de meta en x=99, radio ~9 unidades
+// igual que el círculo central). offsetX desplaza el origen porque el campo
+// visible está recortado al último cuarto (empieza en x=75, no en x=0).
 function AreaReferencias({ offsetX = 0 }: { offsetX?: number }) {
   const penaltyX = 88.3 - offsetX;
   const cy = 32;
@@ -85,7 +85,7 @@ function AreaReferencias({ offsetX = 0 }: { offsetX?: number }) {
   return (
     <g stroke="#B9CABE" strokeWidth="0.4" fill="none">
       <circle cx={penaltyX} cy={cy} r="0.6" fill="#B9CABE" stroke="none" />
-      <path d={`M ${edgeX} ${cy - dy} A ${r} ${r} 0 0 1 ${edgeX} ${cy + dy}`} />
+      <path d={`M ${edgeX} ${cy - dy} A ${r} ${r} 0 0 0 ${edgeX} ${cy + dy}`} />
     </g>
   );
 }
@@ -129,7 +129,6 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
   const [mensaje, setMensaje] = useState<string | null>(null);
 
   const pitchRef = useRef<SVGSVGElement>(null);
-  const zoomRef = useRef<SVGSVGElement>(null);
   const goalRef = useRef<SVGSVGElement>(null);
   const ZOOM_MIN_X = 75; // último cuarto de campo, donde se marca la mayoría de goles
 
@@ -152,16 +151,7 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
     const svg = pitchRef.current;
     if (!svg) return;
     const p = svgPoint(svg, e.clientX, e.clientY);
-    const x = clamp(p.x, 0, 100);
-    const y = clamp(p.y, 0, 64);
-    setShot({ x, y: (y / 64) * 100 });
-  }
-
-  function handleZoomPointer(e: React.PointerEvent<SVGSVGElement>) {
-    const svg = zoomRef.current;
-    if (!svg) return;
-    const p = svgPoint(svg, e.clientX, e.clientY);
-    const x = clamp(ZOOM_MIN_X + p.x, 0, 100);
+    const x = clamp(ZOOM_MIN_X + p.x, ZOOM_MIN_X, 100);
     const y = clamp(p.y, 0, 64);
     setShot({ x, y: (y / 64) * 100 });
   }
@@ -292,49 +282,28 @@ export default function GolesAdminClient({ golesIniciales }: { golesIniciales: G
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Punto de disparo</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Punto de disparo <span className="normal-case text-gray-400 font-normal">(último cuarto de campo)</span>
+            </label>
             <span className="font-mono text-xs text-blanquiverde-verde bg-blanquiverde-verde/10 px-2 py-0.5 rounded">
               {shot ? `x: ${shot.x.toFixed(1)} · y: ${shot.y.toFixed(1)}` : 'x: — · y: —'}
             </span>
           </div>
           <svg
             ref={pitchRef}
-            viewBox="0 0 100 64"
+            viewBox={`0 0 ${100 - ZOOM_MIN_X} 64`}
             className="w-full bg-blanquiverde-verde/5 border border-blanquiverde-verde/30 rounded cursor-crosshair touch-none"
             onPointerDown={handlePitchPointer}
             onPointerMove={(e) => e.buttons === 1 && handlePitchPointer(e)}
           >
-            <rect x="1" y="1" width="98" height="62" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
-            <line x1="50" y1="1" x2="50" y2="63" stroke="#B9CABE" strokeWidth="0.4" />
-            <circle cx="50" cy="32" r="9" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
-            <rect x="1" y="14" width="16" height="36" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
-            <rect x="83" y="14" width="16" height="36" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
-            <AreaReferencias />
-            {/* Marco visual del recorte de zoom (último cuarto) */}
-            <rect x={ZOOM_MIN_X} y="1" width={99 - ZOOM_MIN_X} height="62" fill="none" stroke="#A9813C" strokeWidth="0.5" strokeDasharray="1.5,1" />
-            <text x="4" y="60" fontSize="3" fill="#8B958C">
-              Córdoba ataca →
-            </text>
-            {shot && <circle cx={shot.x} cy={(shot.y / 100) * 64} r="1.8" fill="#A9813C" stroke="#fff" strokeWidth="0.5" />}
-          </svg>
-
-          <div className="flex items-center justify-between mb-1 mt-4">
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Zoom último cuarto <span className="normal-case text-gray-400 font-normal">arrastra para precisar</span>
-            </label>
-          </div>
-          <svg
-            ref={zoomRef}
-            viewBox={`0 0 ${100 - ZOOM_MIN_X} 64`}
-            className="w-full bg-blanquiverde-verde/5 border border-[#A9813C]/50 rounded cursor-crosshair touch-none"
-            onPointerDown={handleZoomPointer}
-            onPointerMove={(e) => e.buttons === 1 && handleZoomPointer(e)}
-          >
             <rect x="-1" y="1" width={100 - ZOOM_MIN_X + 1} height="62" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
             <rect x={83 - ZOOM_MIN_X} y="14" width="16" height="36" fill="none" stroke="#B9CABE" strokeWidth="0.4" />
             <AreaReferencias offsetX={ZOOM_MIN_X} />
+            <text x={100 - ZOOM_MIN_X - 2} y="60" fontSize="3" fill="#8B958C" textAnchor="end">
+              → portería
+            </text>
             {shot && (
-              <circle cx={shot.x - ZOOM_MIN_X} cy={(shot.y / 100) * 64} r="2.4" fill="#A9813C" stroke="#fff" strokeWidth="0.6" />
+              <circle cx={shot.x - ZOOM_MIN_X} cy={(shot.y / 100) * 64} r="2.2" fill="#A9813C" stroke="#fff" strokeWidth="0.6" />
             )}
           </svg>
 
