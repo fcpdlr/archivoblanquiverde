@@ -13,7 +13,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <header className="bg-blanquiverde-verde text-white">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="font-bold text-lg flex-1">
+            <Link href="/" className="font-bold text-lg flex-1 flex items-center gap-2">
+              <img src="/logo.png" alt="" width={32} height={32} className="rounded-full" />
               ARCHIVO BLANQUIVERDE
             </Link>
             <nav className="hidden md:flex gap-6 text-sm shrink-0">

@@ -13,6 +13,7 @@ const RUTAS_PERMITIDAS = new Set([
   '/apple-icon',
   '/opengraph-image',
   '/favicon.ico',
+  '/logo.png',
 ]);
 
 export function middleware(request: NextRequest) {
