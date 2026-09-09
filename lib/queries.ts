@@ -104,7 +104,8 @@ export async function getJugadorBySlug(slug: string) {
          edicion:ediciones_competicion(temporada:temporadas(etiqueta), competicion:competiciones(nombre_actual)))`
     )
     .eq('autor_id', persona.id)
-    .eq('equipo_beneficiario_id', CORDOBA_ID);
+    .eq('equipo_beneficiario_id', CORDOBA_ID)
+    .neq('tipo', 'AUTOGOL');
 
   const { data: tarjetas } = await supabase
     .from('tarjetas')
@@ -455,6 +456,7 @@ export async function getTemporadaByEtiqueta(etiqueta: string) {
       .from('goles')
       .select('autor_id')
       .eq('equipo_beneficiario_id', CORDOBA_ID)
+      .neq('tipo', 'AUTOGOL')
       .in('partido_id', partidoIds);
     const { data: tarjetasTemporada } = await supabase
       .from('tarjetas')
