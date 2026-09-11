@@ -49,10 +49,10 @@ export default async function EntrenadorPage({ params }: { params: { slug: strin
           <img
             src={persona.foto_url}
             alt={persona.nombre_mostrado}
-            className="w-40 h-40 rounded-full object-cover border-2 border-blanquiverde-verde"
+            className="w-32 h-40 rounded-lg object-cover border-2 border-blanquiverde-verde"
           />
         ) : (
-          <div className="w-40 h-40 rounded-full bg-gray-100 border-2 border-blanquiverde-verde flex items-center justify-center text-5xl text-gray-300 font-serif">
+          <div className="w-32 h-40 rounded-lg bg-gray-100 border-2 border-blanquiverde-verde flex items-center justify-center text-5xl text-gray-300 font-serif">
             {persona.nombre_mostrado?.[0] ?? '?'}
           </div>
         )}
@@ -83,7 +83,7 @@ export default async function EntrenadorPage({ params }: { params: { slug: strin
 
         {esTambienJugador && (
           <Link href={`/jugadores/${persona.slug}`} className="mt-4 text-sm text-blanquiverde-verde hover:underline">
-            También jugó en el Córdoba CF →
+            Fue jugador del Córdoba CF · Ver ficha →
           </Link>
         )}
       </div>

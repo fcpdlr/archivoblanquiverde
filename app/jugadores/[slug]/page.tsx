@@ -235,7 +235,7 @@ export default async function JugadorPage({ params }: { params: { slug: string }
 
         {esTambienEntrenador && (
           <Link href={`/entrenadores/${persona.slug}`} className="mt-4 text-sm text-blanquiverde-verde hover:underline">
-            También entrenó al Córdoba CF →
+            Fue entrenador del Córdoba CF · Ver ficha →
           </Link>
         )}
       </div>
